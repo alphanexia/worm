@@ -66,7 +66,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 
 <div id="menu" class="screen"><div class="panel">
   <h1>GRUBZ<span>ARENA</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v6</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v6.1</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -1558,6 +1558,8 @@ function fsAction() {
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
 if (STANDALONE) { $('bFull').hidden = true; $('btnFS').hidden = true; }
+// Appli installée : on force la verticale (au cas où Android garde un ancien réglage)
+if (STANDALONE) { const lockP = () => { try { screen.orientation.lock('portrait').catch(() => {}); } catch (e) {} }; lockP(); document.addEventListener('pointerdown', lockP, { once: true }); }
 $('bFull').addEventListener('click', fsAction);
 $('btnFS').addEventListener('click', () => {
   if (FS_OK) { goFullscreen(); if (installEvt) { installEvt.prompt(); installEvt = null; } }

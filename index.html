@@ -65,7 +65,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 <div id="menu" class="screen"><div class="panel">
   <svg class="logo anim" width="130" height="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h1>DINO<span>BOUM</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v8</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v9</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -160,6 +160,16 @@ const WEAPONS = [
 ];
 const SPECIALS = ['grenade', 'rope', 'shotgun', 'cluster', 'dynamite', 'punch', 'melon', 'meteor', 'fart', 'teleport', 'egg'];
 const START_BONUS = ['shotgun', 'cluster', 'punch', 'melon', 'fart', 'teleport', 'egg']; // 1 arme au hasard au départ
+const LINES = {
+  hurt:   ['Aïe !', 'Ouille !', 'Mes écailles !', 'Grrr !', 'Pas la queue !', 'Ça pique !', 'Maman !'],
+  turn:   ['À moi !', 'Rawr !', 'Hé hé…', 'C\'est parti !', 'Préparez-vous !', 'Miam, une cible !'],
+  fire:   ['Tiens !', 'Cadeau !', 'Attrape !', 'Surprise !', 'Rawr !'],
+  die:    ['Adieu…', 'Je reviendrai…', 'Bye bye !', 'Raconte pas…'],
+  drown:  ['Glouglou…', 'Je sais pas nager !', 'Au secours !'],
+  jump:   ['Hop !', 'Youhou !', 'Wiii !'],
+  happy:  ['Youpi !', 'Trop bien !', 'Génial !', 'Miam !'],
+  miss:   ['Raté…', 'Oups !', 'Même pas mal !'],
+};
 const NOCROSS = ['dynamite', 'punch', 'fart', 'teleport', 'meteor'];
 // Bonus des caisses surprises
 const POWERS = {
@@ -302,7 +312,7 @@ const settings = { per: 3, turn: 45 };
 let inputs = {}, prevF = {}, events = [];
 const keys = { l: false, r: false, u: false, d: false, f: false };
 let tickN = 0, overShown = false, lastTT = -2, banner = null, ann = null;
-const fx = [], texts = [], tracers = [];
+const fx = [], texts = [], tracers = [], bubbles = {};
 const cam = { x: W / 2, y: H / 2, s: 1, manualUntil: 0, overview: false, shake: 0 };
 
 function myName() { return ($('name').value.trim() || 'Joueur').slice(0, 12); }
@@ -311,10 +321,10 @@ function myName() { return ($('name').value.trim() || 'Joueur').slice(0, 12); }
 function initGame(teams, cr) {
   G = {
     teams, cr, proj: [], newProj: [], phase: 'settle', tt: -1, ac: -1, timer: 0, tm: 0, wind: 0, charge: 0, weapon: 0,
-    ammo: teams.map(() => { const a = WEAPONS.map(w => w.ammo); const b = START_BONUS[Math.floor(Math.random() * START_BONUS.length)]; a[WEAPONS.findIndex(w => w.id === b)] = 1; return a; }), am: null, winner: -1, settleWait: 0, allBooms: [], spec: null, crates: [], pw: {}, shots: 1, ann: [], fxe: [], kv: [], pwl: [],
+    ammo: teams.map(() => { const a = WEAPONS.map(w => w.ammo); const b = START_BONUS[Math.floor(Math.random() * START_BONUS.length)]; a[WEAPONS.findIndex(w => w.id === b)] = 1; return a; }), am: null, winner: -1, settleWait: 0, allBooms: [], spec: null, crates: [], pw: {}, shots: 1, ann: [], fxe: [], say: [], kv: [], pwl: [],
     booms: [], texts: [], tracers: [], sfx: [], pv: [],
   };
-  fx.length = texts.length = tracers.length = 0;
+  fx.length = texts.length = tracers.length = 0; for (const k in bubbles) delete bubbles[k];
   overShown = false; lastTT = -2; banner = null; ann = null; tickN = 0;
   inputs = {}; prevF = {}; events = [];
   cam.overview = false; cam.manualUntil = 0;
@@ -343,15 +353,25 @@ function hostStartGame() {
   broadcast(startMsg());
 }
 
+// Un dino dit quelque chose (bulle + petit cri)
+function say(c, type, force) {
+  if (!c || !G) return;
+  const now = tickN;
+  if (!force && c.lastSay && now - c.lastSay < 50) return;
+  c.lastSay = now;
+  G.say.push([c.id, type, Math.floor(Math.random() * LINES[type].length)]);
+}
 function damage(c, d) {
   if (c.dead || d <= 0) return;
   if (c.shield) { d = Math.ceil(d / 3); c.shield = false; G.texts.push([Math.round(c.x), Math.round(c.y - 36), '🛡️ Bloqué !', '#9fd4ff']); }
   c.hp = Math.max(0, c.hp - d); c.dmgTaken += d;
+  say(c, 'hurt');
   G.texts.push([Math.round(c.x), Math.round(c.y - 22), '-' + d, G.teams[c.team].color]);
 }
 function drown(c) {
   if (c.dead) return;
   c.hp = 0; c.dead = true; c.drowned = true; c.dmgTaken += 1;
+  say(c, 'drown', true);
   G.texts.push([Math.round(c.x), WATER - 20, 'Plouf !', '#9fd4ff']); G.sfx.push('splash');
 }
 
@@ -425,6 +445,7 @@ function pickup(c, k) {
   }
   else givePower(c.team, p);
   g.ann.push([txt, team.color]);
+  if (p !== 'trap') say(c, 'happy', true);
 }
 function givePower(t, p) {
   const g = G;
@@ -595,6 +616,7 @@ function fire() {
   g.charge = 0;
   if (am[g.weapon] === 0) g.weapon = 0;
   g.sfx.push(w.id === 'punch' ? 'punch' : w.id === 'shotgun' ? 'shot' : w.id === 'fart' ? 'fart' : w.id === 'teleport' ? 'tele' : 'fire');
+  if (Math.random() < 0.5) say(c, 'fire', true);
   if (g.shots > 1) { g.shots--; g.timer = Math.max(g.timer, 8 * 60); g.texts.push([Math.round(c.x), Math.round(c.y - 40), 'Encore un tir !', '#ffc93c']); return; }
   g.phase = 'retreat';
   g.timer = (w.id === 'dynamite' ? 5 : w.id === 'teleport' ? 2 : 3) * 60;
@@ -695,6 +717,7 @@ function nextTurn() {
   else if (r < 0.20) { let n = 0; for (let i = 0; i < 3; i++) if (spawnCrate()) n++; if (n) g.ann.push(['📦 Pluie de caisses !', '#ffc93c']); }
   if (Math.random() < 0.7 && g.crates.length < 6) spawnCrate();
   prevF = {};
+  say(g.cr[g.ac], 'turn', true);
 }
 
 function settleLogic() {
@@ -708,7 +731,7 @@ function settleLogic() {
   if (++g.settleWait < 35) return;
   const dying = g.cr.filter(c => !c.dead && c.hp <= 0);
   if (dying.length) {
-    for (const c of dying) { c.dead = true; c.hp = 0; explode(c.x, c.y, 22, 15); }
+    for (const c of dying) { say(c, 'die', true); c.dead = true; c.hp = 0; explode(c.x, c.y, 22, 15); }
     g.settleWait = 0; return;
   }
   nextTurn();
@@ -723,7 +746,7 @@ function hostTick() {
   for (const e of events) {
     if (e.o !== owner) continue;
     if (e.type === 'jump' && canMove && act.rope) { releaseRope(act); continue; }
-    if (e.type === 'jump' && canMove && !act.air) { act.vx = act.face * 2.4; act.vy = -4.4; act.air = true; g.sfx.push('jump'); }
+    if (e.type === 'jump' && canMove && !act.air) { act.vx = act.face * 2.4; act.vy = -4.4; act.air = true; g.sfx.push('jump'); if (Math.random() < 0.35) say(act, 'jump'); }
     if (e.type === 'wp' && g.phase === 'aim' && g.charge === 0 && WEAPONS[e.w] && g.ammo[g.tt][e.w] !== 0) g.weapon = e.w;
   }
   events.length = 0;
@@ -775,7 +798,7 @@ function snapshot() {
     ph: g.phase, tt: g.tt, ac: g.ac, tm: g.tm, wd: g.wind, ch: Math.round(g.charge * 100) / 100, w: g.weapon,
     am: g.tt >= 0 ? g.ammo[g.tt] : null, wn: g.winner, aw: g.teams.map(t => t.away ? 1 : 0),
     b: g.booms.splice(0), tx: g.texts.splice(0), tr: g.tracers.splice(0), sf: g.sfx.splice(0),
-    k: g.crates.map(k => [Math.round(k.x), Math.round(k.y), k.para ? 1 : 0]), pw: Object.keys(g.pw).filter(k => g.pw[k]), an: g.ann.splice(0), fe: g.fxe.splice(0),
+    k: g.crates.map(k => [Math.round(k.x), Math.round(k.y), k.para ? 1 : 0]), pw: Object.keys(g.pw).filter(k => g.pw[k]), an: g.ann.splice(0), fe: g.fxe.splice(0), sy: g.say.splice(0),
   };
 }
 
@@ -797,6 +820,12 @@ function handleCommon(s) {
   for (const f of s.sf) playSfx(f);
   for (const a of s.an || []) ann = { txt: a[0], col: a[1], life: 130 };
   for (const e of s.fe || []) addFxEvent(e);
+  for (const [cid, type, i] of s.sy || []) {
+    const c = G.cr[cid]; if (!c) continue;
+    bubbles[cid] = { txt: LINES[type][i % LINES[type].length], type, life: 95 };
+    if (type === 'hurt') c.stars = 70;
+    cry(c.kind || 0, type);
+  }
   if (s.b.length) sBoom(Math.max(...s.b.map(b => b[2])));
   if (s.ph === 'aim' && s.tt !== lastTT) {
     lastTT = s.tt;
@@ -1085,6 +1114,7 @@ function updCtl() {
   if (st !== lastCtlState) {
     lastCtlState = st;
     $('ctlL').style.visibility = $('ctlR').style.visibility = mine ? 'visible' : 'hidden';
+    $('bWeapon').style.visibility = mine ? 'visible' : 'hidden';
     $('bWeapon').disabled = !(mine && G.phase === 'aim');
     $('bFire').classList.toggle('off', G.phase !== 'aim');
     if (!mine) { releaseKeys(); $('wmenu').hidden = true; }
@@ -1135,6 +1165,30 @@ function sFart() {
   g.gain.setValueAtTime(0.0001, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.35, AC.currentTime + 0.05); g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.75);
   o.connect(f); f.connect(g); g.connect(AC.destination); o.start(); lfo.start(); o.stop(AC.currentTime + 0.8); lfo.stop(AC.currentTime + 0.8);
 }
+const VOICE = [190, 470, 280, 380]; // T-rex grave, long cou aigu, tricératops, stégosaure
+function tone(type, f0, f1, dur, vol, delay, vib) {
+  const t0 = AC.currentTime + (delay || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t0 + dur);
+  if (vib) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = vib; lg.gain.value = f0 * 0.06; l.connect(lg); lg.connect(o.frequency); l.start(t0); l.stop(t0 + dur); }
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function cry(kind, type) {
+  if (!AC) return;
+  const b = VOICE[kind] * (0.92 + Math.random() * 0.16);
+  if (type === 'hurt') { tone('triangle', b * 1.9, b * 0.8, 0.28, 0.16, 0, 18); tone('square', b * 2.4, b * 1.2, 0.12, 0.04); }
+  else if (type === 'turn') {
+    if (kind === 0) { tone('sawtooth', b, b * 0.6, 0.45, 0.09, 0, 9); }     // petit rugissement
+    else { tone('triangle', b, b * 1.5, 0.1, 0.12); tone('triangle', b * 1.3, b * 2, 0.12, 0.12, 0.11); }
+  }
+  else if (type === 'fire') tone('square', b * 1.6, b * 2.2, 0.09, 0.06);
+  else if (type === 'jump') tone('sine', b * 1.2, b * 2.8, 0.18, 0.12);
+  else if (type === 'happy') { tone('triangle', b * 1.5, b * 1.5, 0.08, 0.12); tone('triangle', b * 2, b * 2, 0.08, 0.12, 0.09); tone('triangle', b * 2.7, b * 2.7, 0.14, 0.12, 0.18); }
+  else if (type === 'die') { tone('square', b * 1.2, b * 1.1, 0.22, 0.06); tone('square', b * 1.05, b * 0.95, 0.22, 0.06, 0.24); tone('square', b * 0.9, b * 0.5, 0.6, 0.06, 0.48, 6); }
+  else if (type === 'drown') { for (let i = 0; i < 6; i++) tone('sine', 300 + Math.random() * 500, 700 + Math.random() * 500, 0.07, 0.07, i * 0.09); }
+  else if (type === 'miss') tone('triangle', b * 1.4, b * 0.9, 0.35, 0.1, 0, 7);
+}
 function playSfx(f) {
   if (f === 'fart') return sFart();
   if (f === 'rope') { sBlip(900, 0.08, 0.08, 'square'); return; }
@@ -1183,7 +1237,7 @@ function computeLayout() {
   L.col = { x: colX, w: colW };
   const k = Math.max(0.78, Math.min(1.15, colW / 390));   // échelle des boutons
   L.k = k;
-  const panelH = Math.round((64 + 10 + 58 + 22) * k) + 12 + SAB;  // hauteur de la zone des commandes
+  const panelH = Math.round((58 + 10 + 84 + 14) * k) + 12 + SAB;  // hauteur de la zone des commandes
   L.panelH = panelH;
   const top = SAT + 6;
   const mw = colW - 12, mh = Math.round(mw * 9 / 16);
@@ -1203,15 +1257,16 @@ function applyDomLayout() {
   const key = [VW, VH, L.x, L.w, L.h, SAB].join(':');
   if (key === domKey) return; domKey = key;
   const k = L.k, x0 = L.col.x, cw = L.col.w, b = 12 + SAB, m = 12 * k;
-  const M = 64 * k, J = 58 * k, A = 54 * k, F = 86 * k, WB = 62 * k, gap = 10 * k;
-  // gauche
+  const M = 68 * k, J = 58 * k, A = 56 * k, F = 84 * k, WB = 62 * k, gap = 10 * k;
+  // gauche : se déplacer
   placeBtn('bL', x0 + m, b, M);
   placeBtn('bR', x0 + m + M + gap, b, M);
-  placeBtn('bJump', x0 + m + M + gap / 2 - J / 2, b + M + gap, J);
-  // droite
-  placeBtn('bFire', x0 + cw - m - F, b, F);
-  placeBtn('bD', x0 + cw - m - F - gap - A, b, A);
-  placeBtn('bU', x0 + cw - m - F - gap - A, b + A + gap, A);
+  // droite : FEU en haut, SAUT juste en dessous, visée à côté
+  const fx = x0 + cw - m - F;
+  placeBtn('bFire', fx, b + J + gap, F);
+  placeBtn('bJump', fx + F / 2 - J / 2, b, J);
+  placeBtn('bD', fx - gap - A, b + 4 * k, A);
+  placeBtn('bU', fx - gap - A, b + 4 * k + A + gap, A);
   // centre
   const cx = x0 + cw / 2;
   placeBtn('bWeapon', cx - WB / 2, b + 6 * k, WB, WB * 0.92);
@@ -1312,7 +1367,9 @@ function drawCreature(c, team, active, t) {
 }
 
 /* ---------- Petits dinos (4 espèces) ---------- */
+let blinkNow = false;
 function dinoEye(ex, ey, r, ax, ay) {
+  if (blinkNow) { ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ex - r, ey); ctx.lineTo(ex + r, ey); ctx.stroke(); return; }
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, ey, r, 0, 7); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 0.6; ctx.stroke();
   ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + ax * r * 0.4, ey + ay * r * 0.4, r * 0.55, 0, 7); ctx.fill();
@@ -1329,6 +1386,7 @@ function poly(pts, fill) {
 }
 function drawDino(c, col, active, t) {
   const dark = shade(col, 0.6), light = shade(col, 1.35);
+  blinkNow = ((t + (c.id || 0) * 977) % 3400) < 110;
   if (!c.air) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(c.rx, c.ry + CR, 9, 2.2, 0, 0, 7); ctx.fill(); }
   const step = active && !c.air ? Math.sin(t * 0.02) : 0;
   const bob = active ? Math.sin(t * 0.008) * 0.6 : 0;
@@ -1563,6 +1621,32 @@ function render(t, dt) {
   }
   for (const c of g.cr) drawCreature(c, g.teams[c.team], c === act && (g.phase === 'aim' || g.phase === 'retreat'), t);
   if (act && !act.dead && (g.phase === 'aim' || g.phase === 'retreat')) drawAim(act, g.teams[act.team], t);
+  // étoiles quand un dino est sonné
+  for (const c of g.cr) if (c.stars > 0 && !c.dead) {
+    c.stars--;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 0.008 + i * 2.09, sx = c.rx + Math.cos(a) * 10, sy = c.ry - CR - 6 + Math.sin(a) * 3;
+      ctx.fillStyle = '#ffe14a'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('★', sx, sy);
+    }
+  }
+  // bulles de BD
+  for (const cid in bubbles) {
+    const bu = bubbles[cid], c = g.cr[cid];
+    if (!c || --bu.life <= 0) { delete bubbles[cid]; continue; }
+    if (c.dead && bu.type !== 'die' && bu.type !== 'drown') continue;
+    const pop = Math.min(1, (95 - bu.life) / 6), a = Math.min(1, bu.life / 15);
+    ctx.save(); ctx.globalAlpha = a;
+    const bx = c.rx, by = (c.drowned ? WATER - 12 : c.ry) - CR - 56;
+    ctx.translate(bx, by); ctx.scale(pop, pop);
+    ctx.font = 'bold 9px system-ui,sans-serif'; ctx.textAlign = 'center';
+    const w = ctx.measureText(bu.txt).width + 12;
+    ctx.fillStyle = bu.type === 'hurt' ? '#ffe9e6' : '#fff';
+    roundRect(-w / 2, -9, w, 16, 8); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-3, 6); ctx.lineTo(0, 13); ctx.lineTo(4, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; roundRect(-w / 2, -9, w, 16, 8); ctx.stroke();
+    ctx.fillStyle = bu.type === 'hurt' ? '#c0202a' : '#222'; ctx.fillText(bu.txt, 0, 2.5);
+    ctx.restore();
+  }
   const crates = isHost ? g.crates : (g.kv || []).map(a => ({ x: a[0], y: a[1], para: !!a[2] }));
   for (const k of crates) drawCrate(k, t);
   for (const p of projView()) drawProj(p, t);

@@ -1,4 +1,4 @@
-# 💥 Grubz Arena
+# 💥 Dino Boum
 
 Jeu d'artillerie au tour par tour sur navigateur. Terrain destructible, vent, 6 armes, **2 à 6 joueurs en ligne**. Se joue sur Android, iPhone et PC directement depuis le site, sans rien installer.
 
@@ -42,4 +42,4 @@ Tomber à l'eau élimine directement. La dernière équipe en vie gagne.
 
 - **L'hôte doit garder le jeu ouvert à l'écran.** C'est son appareil qui fait tourner la partie : s'il verrouille son téléphone ou change d'appli, la partie se met en pause pour tout le monde.
 - Le multijoueur est en pair-à-pair (WebRTC via [PeerJS](https://peerjs.com)), donc **aucun serveur à payer**. Sur certains réseaux 4G/5G ou Wi-Fi d'entreprise, la connexion directe peut échouer. Dans ce cas, mettez-vous tous sur le même Wi-Fi, ou ajoutez un serveur TURN dans `PEER_OPTS` en haut du script (par exemple un compte gratuit Metered ou Twilio).
-- Tout tient dans un seul fichier `index.html`, facile à modifier : dégâts, armes, couleurs, noms des Grubz…
+- Tout tient dans un seul fichier `index.html`, facile à modifier : dégâts, armes, couleurs, noms des dinos…

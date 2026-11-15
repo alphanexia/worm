@@ -130,6 +130,10 @@ const WEAPONS = [
   { id: 'punch',    name: 'Gant',     icon: '🥊', charge: false, ammo: -1 },
 ];
 const PEER_PREFIX = 'grubz-arena-v1-';
+// Identifiant persistant de l'appareil : permet de revenir dans une partie en cours
+let TOKEN = new URLSearchParams(location.search).get('tok');
+if (!TOKEN) { try { TOKEN = localStorage.getItem('grubz-tok'); } catch (e) {} }
+if (!TOKEN) { TOKEN = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem('grubz-tok', TOKEN); } catch (e) {} }
 const PEER_OPTS = { config: { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
@@ -223,7 +227,7 @@ function findSurface(x) { x = Math.floor(x); for (let y = 0; y < H; y++) if (mas
 /* ================= État réseau / jeu ================= */
 let G = null;
 let peer = null, isHost = false, myId = 'local', online = false, roomCode = '';
-const conns = new Map(); let hostConn = null;
+const conns = new Map(), peerTok = new Map(); let hostConn = null, joined = false, reconnecting = false, rejoinUntil = 0, rejoinTimer = null, joinTimeout = null;
 let lobbyPlayers = [];
 const settings = { per: 3, turn: 45 };
 let inputs = {}, prevF = {}, events = [];
@@ -238,7 +242,7 @@ function myName() { return ($('name').value.trim() || 'Joueur').slice(0, 12); }
 function initGame(teams, cr) {
   G = {
     teams, cr, proj: [], newProj: [], phase: 'settle', tt: -1, ac: -1, timer: 0, tm: 0, wind: 0, charge: 0, weapon: 0,
-    ammo: teams.map(() => WEAPONS.map(w => w.ammo)), am: null, winner: -1, settleWait: 0,
+    ammo: teams.map(() => WEAPONS.map(w => w.ammo)), am: null, winner: -1, settleWait: 0, allBooms: [], spec: null,
     booms: [], texts: [], tracers: [], sfx: [], pv: [],
   };
   fx.length = texts.length = tracers.length = 0;
@@ -266,7 +270,8 @@ function hostStartGame() {
     cr.push(c); id++;
   }
   initGame(teams, cr);
-  broadcast({ t: 'start', spec, teams, cr: cr.map(c => [c.id, c.team, c.name, Math.round(c.x), Math.round(c.y)]), settings });
+  G.spec = spec;
+  broadcast(startMsg());
 }
 
 function damage(c, d) {
@@ -281,8 +286,9 @@ function drown(c) {
 }
 
 function explode(x, y, R, dmg) {
+  x = Math.round(x); y = Math.round(y);
   carve(x, y, R);
-  G.booms.push([Math.round(x), Math.round(y), R]);
+  G.booms.push([Math.round(x), Math.round(y), R]); G.allBooms.push([Math.round(x), Math.round(y), R]);
   for (const c of G.cr) {
     if (c.dead) continue;
     const dx = c.x - x, dy = c.y - y, d = Math.hypot(dx, dy), rr = R + CR;
@@ -496,6 +502,11 @@ function hostTick() {
     else if (inp.f && !pf) fire();
   }
   if (owner) prevF[owner] = !!inp.f;
+  if (g.tt >= 0 && g.phase === 'aim' && g.teams[g.tt].away && settings.turn * 60 - g.timer > 90) {
+    g.texts.push([Math.round(act ? act.x : W / 2), Math.round(act ? act.y - 40 : 300), 'Absent : tour passé', '#fff']);
+    endControl();
+  }
+  if (tickN % 60 === 0) { const now = performance.now(); for (const t of g.teams) if (t.away && now - t.awaySince > 300000) forfeit(t.owner); }
   for (const c of g.cr) updCreature(c);
   updProjectiles();
   g.timer--;
@@ -512,7 +523,7 @@ function snapshot() {
     c: g.cr.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10, c.hp, c.dead ? (c.drowned ? 2 : 1) : 0, c.face, Math.round(c.aim * 100) / 100]),
     p: g.proj.map(p => [p.type, Math.round(p.x), Math.round(p.y), Math.round(Math.atan2(p.vy, p.vx) * 10) / 10, p.fuse !== undefined ? Math.max(0, Math.ceil(p.fuse / 60)) : 0]),
     ph: g.phase, tt: g.tt, ac: g.ac, tm: g.tm, wd: g.wind, ch: Math.round(g.charge * 100) / 100, w: g.weapon,
-    am: g.tt >= 0 ? g.ammo[g.tt] : null, wn: g.winner,
+    am: g.tt >= 0 ? g.ammo[g.tt] : null, wn: g.winner, aw: g.teams.map(t => t.away ? 1 : 0),
     b: g.booms.splice(0), tx: g.texts.splice(0), tr: g.tracers.splice(0), sf: g.sfx.splice(0),
   };
 }
@@ -523,6 +534,7 @@ function applySnap(s) {
   s.c.forEach((a, i) => { const c = g.cr[i]; if (!c) return; c.x = a[0]; c.y = a[1]; c.hp = a[2]; c.dead = a[3] > 0; c.drowned = a[3] === 2; c.face = a[4]; c.aim = a[5]; });
   g.pv = s.p.map(a => ({ type: a[0], x: a[1], y: a[2], ang: a[3], fs: a[4] }));
   g.phase = s.ph; g.tt = s.tt; g.ac = s.ac; g.tm = s.tm; g.wind = s.wd; g.charge = s.ch; g.weapon = s.w; g.am = s.am; g.winner = s.wn;
+  if (s.aw) s.aw.forEach((a, i) => { if (g.teams[i]) g.teams[i].away = !!a; });
   for (const b of s.b) carve(b[0], b[1], b[2]);
 }
 
@@ -557,88 +569,189 @@ function hostCreate() {
   roomCode = makeCode();
   peer = new Peer(PEER_PREFIX + roomCode, PEER_OPTS);
   peer.on('open', id => {
-    isHost = true; online = true; myId = id;
+    isHost = true; online = true; myId = TOKEN;
     lobbyPlayers = [{ name: myName(), owner: myId }];
     menuMsg(''); showLobby();
   });
   peer.on('connection', conn => {
-    conn.on('open', () => conns.set(conn.peer, conn));
     conn.on('data', d => onHostData(conn, d));
-    conn.on('close', () => onPeerLeft(conn.peer));
-    conn.on('error', () => onPeerLeft(conn.peer));
+    conn.on('close', () => onPeerLeft(conn));
+    conn.on('error', () => onPeerLeft(conn));
   });
+  let opened = false;
+  peer.on('open', () => { opened = true; netStatus(''); });
   peer.on('error', e => {
-    if (e.type === 'unavailable-id') { peer.destroy(); hostCreate(); return; }
+    if (e.type === 'unavailable-id' && !opened) { peer.destroy(); hostCreate(); return; }
     if (e.type === 'peer-unavailable') return;
-    menuMsg('Erreur réseau : ' + e.type); $('lobbyMsg').textContent = 'Erreur réseau : ' + e.type;
+    if (opened && SOFT_ERR.includes(e.type)) { scheduleReconnect(); return; }
+    menuMsg('Erreur réseau : ' + e.type); netStatus('Erreur réseau : ' + e.type);
   });
-  peer.on('disconnected', () => { try { if (!peer.destroyed) peer.reconnect(); } catch (e) {} });
+  peer.on('disconnected', scheduleReconnect);
 }
+
+/* Reconnexion automatique au serveur de mise en relation
+   (le téléphone coupe la connexion quand on passe sur WhatsApp, etc.) */
+const SOFT_ERR = ['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected', 'unavailable-id'];
+let reconnectTimer = null;
+function netStatus(m) { const el = $('lobbyMsg'); if (el && (m || /seau|connexion/i.test(el.textContent))) el.textContent = m; }
+function scheduleReconnect() {
+  if (!peer || peer.destroyed || reconnectTimer) return;
+  netStatus('Reconnexion…');
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (!peer || peer.destroyed) return;
+    if (peer.disconnected) { try { peer.reconnect(); } catch (e) {} setTimeout(() => { if (peer && peer.disconnected) scheduleReconnect(); else netStatus(''); }, 2500); }
+    else netStatus('');
+  }, 800);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && peer && !peer.destroyed && peer.disconnected) scheduleReconnect();
+  if (!isHost && hostConn && hostConn.open) { try { hostConn.send({ t: 'vis', h: document.hidden }); } catch (e) {} }
+  if (!document.hidden && reconnecting) schedRejoin(100);
+});
+addEventListener('online', () => { if (peer && !peer.destroyed && peer.disconnected) scheduleReconnect(); });
 
 function onHostData(conn, d) {
   if (!d || typeof d !== 'object') return;
   if (d.t === 'join') {
-    if (G) { conn.send({ t: 'err', m: 'La partie a déjà commencé.' }); return; }
-    if (lobbyPlayers.length >= 6) { conn.send({ t: 'err', m: 'Salon complet (6 joueurs max).' }); return; }
-    if (lobbyPlayers.some(p => p.owner === conn.peer)) return;
-    conns.set(conn.peer, conn);
-    lobbyPlayers.push({ name: String(d.name || 'Joueur').slice(0, 12), owner: conn.peer });
+    const tok = String(d.tok || conn.peer).slice(0, 48);
+    const name = String(d.name || 'Joueur').slice(0, 12);
+    if (G) {
+      const mine = G.teams.filter(t => t.owner === tok);
+      if (!mine.length) { conn.send({ t: 'err', m: 'La partie a déjà commencé.' }); return; }
+      conns.set(conn.peer, conn); peerTok.set(conn.peer, tok);
+      for (const t of mine) { if (t.away) G.texts.push([W / 2, 180, t.name + ' est de retour !', t.color]); t.away = false; }
+      conn.send(startMsg());
+      return;
+    }
+    const ex = lobbyPlayers.find(p => p.owner === tok);
+    if (!ex && lobbyPlayers.length >= 6) { conn.send({ t: 'err', m: 'Salon complet (6 joueurs max).' }); return; }
+    conns.set(conn.peer, conn); peerTok.set(conn.peer, tok);
+    if (ex) ex.name = name; else lobbyPlayers.push({ name, owner: tok });
     renderLobby(); broadcastLobby();
-  } else if (d.t === 'in' && d.k) {
-    inputs[conn.peer] = { l: !!d.k.l, r: !!d.k.r, u: !!d.k.u, d: !!d.k.d, f: !!d.k.f };
-  } else if (d.t === 'ev') {
-    events.push({ o: conn.peer, type: d.type, w: d.w | 0 });
+    return;
+  }
+  if (conns.get(conn.peer) !== conn) return;
+  const tok = peerTok.get(conn.peer);
+  if (d.t === 'in' && d.k) inputs[tok] = { l: !!d.k.l, r: !!d.k.r, u: !!d.k.u, d: !!d.k.d, f: !!d.k.f };
+  else if (d.t === 'ev') events.push({ o: tok, type: d.type, w: d.w | 0 });
+  else if (d.t === 'vis') setAway(tok, !!d.h);
+  else if (d.t === 'bye') onPeerLeft(conn, true);
+}
+
+function startMsg() {
+  return {
+    t: 'start', spec: G.spec, settings, hist: G.allBooms,
+    teams: G.teams.map(t => ({ name: t.name, color: t.color, owner: t.owner, away: !!t.away })),
+    cr: G.cr.map(c => [c.id, c.team, c.name, Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10, c.hp, c.dead ? (c.drowned ? 2 : 1) : 0, c.face, c.aim]),
+  };
+}
+
+function liveToks() { const s = new Set([myId]); for (const k of conns.keys()) s.add(peerTok.get(k)); return s; }
+
+// Un joueur se déconnecte : absent (il peut revenir), ou forfait s'il a quitté volontairement
+function onPeerLeft(conn, bye) {
+  const pid = conn.peer;
+  if (conns.get(pid) !== conn) return;
+  conns.delete(pid);
+  const tok = peerTok.get(pid);
+  if (!tok) return;
+  if (!G) { lobbyPlayers = lobbyPlayers.filter(p => p.owner !== tok); renderLobby(); broadcastLobby(); return; }
+  if (bye) forfeit(tok); else setAway(tok, true);
+}
+function setAway(tok, a) {
+  if (!G) return;
+  for (const t of G.teams) {
+    if (t.owner !== tok) continue;
+    if (a && !t.away) { t.awaySince = performance.now(); G.texts.push([W / 2, 180, t.name + ' est absent…', '#fff']); }
+    t.away = a;
   }
 }
-
-function onPeerLeft(pid) {
-  if (!conns.has(pid) && !lobbyPlayers.some(p => p.owner === pid)) return;
-  conns.delete(pid);
-  const name = (lobbyPlayers.find(p => p.owner === pid) || {}).name;
-  lobbyPlayers = lobbyPlayers.filter(p => p.owner !== pid);
-  if (!G) { renderLobby(); broadcastLobby(); return; }
+function forfeit(tok) {
+  if (!G) return;
   G.teams.forEach((t, i) => {
-    if (t.owner !== pid) return;
-    t.owner = '__gone__';
+    if (t.owner !== tok) return;
+    t.owner = '__gone__'; t.away = false;
     for (const c of G.cr) if (c.team === i && !c.dead) { c.dead = true; c.hp = 0; }
-    G.texts.push([W / 2, 200, (name || t.name) + ' a quitté', '#fff']);
+    G.texts.push([W / 2, 200, t.name + ' a quitté la partie', '#fff']);
     if (G.tt === i && (G.phase === 'aim' || G.phase === 'retreat')) endControl();
   });
+  lobbyPlayers = lobbyPlayers.filter(p => p.owner !== tok);
 }
 
+/* ---------- Côté invité ---------- */
 function joinRoom(code) {
   code = (code || '').toUpperCase().trim();
   if (code.length !== 5) { menuMsg('Le code fait 5 caractères.'); return; }
   if (typeof Peer === 'undefined') { menuMsg('Module réseau non chargé. Vérifie ta connexion internet.'); return; }
+  if (peer) leave(true);
   menuMsg('Connexion à la partie ' + code + '…');
-  roomCode = code;
+  roomCode = code; joined = false; reconnecting = false;
   peer = new Peer(PEER_OPTS);
-  const timeout = setTimeout(() => { if (!hostConn || !hostConn.open) menuMsg("Connexion impossible. Vérifie le code, ou essayez tous sur le même Wi-Fi."); }, 12000);
-  peer.on('open', id => {
-    myId = id; isHost = false; online = true;
-    hostConn = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
-    hostConn.on('open', () => { clearTimeout(timeout); hostConn.send({ t: 'join', name: myName() }); });
-    hostConn.on('data', onClientData);
-    hostConn.on('close', () => { if (peer) { leave(); menuMsg("Connexion perdue avec l'hôte."); } });
-  });
+  clearTimeout(joinTimeout);
+  joinTimeout = setTimeout(() => { if (!joined) menuMsg("Connexion impossible. Vérifie le code, ou essayez tous sur le même Wi-Fi."); }, 12000);
+  peer.on('open', () => { myId = TOKEN; isHost = false; online = true; connectHost(); });
   peer.on('error', e => {
-    clearTimeout(timeout);
+    if (reconnecting) { if (SOFT_ERR.includes(e.type)) scheduleReconnect(); return; }
+    if (joined && SOFT_ERR.includes(e.type)) { scheduleReconnect(); return; }
+    clearTimeout(joinTimeout);
     if (e.type === 'peer-unavailable') menuMsg('Partie introuvable : vérifie le code.');
     else menuMsg('Erreur réseau : ' + e.type);
   });
+  peer.on('disconnected', () => { if (joined) scheduleReconnect(); });
+}
+
+function connectHost() {
+  if (!peer || peer.destroyed) return;
+  const c = peer.connect(PEER_PREFIX + roomCode, { reliable: true, serialization: 'json' });
+  hostConn = c;
+  c.on('open', () => {
+    if (hostConn !== c) { try { c.close(); } catch (e) {} return; }
+    clearTimeout(joinTimeout);
+    c.send({ t: 'join', name: myName(), tok: TOKEN });
+    if (document.hidden) c.send({ t: 'vis', h: true });
+    try { sessionStorage.setItem('grubz-room', roomCode); } catch (e) {}
+    history.replaceState(null, '', location.pathname + '?room=' + roomCode);
+  });
+  c.on('data', d => { if (hostConn === c) onClientData(d); });
+  c.on('close', () => { if (hostConn === c) onHostLost(); });
+  c.on('error', () => { if (hostConn === c) onHostLost(); });
+}
+
+function onHostLost() {
+  if (!peer) return;
+  if (!joined) { leave(true); menuMsg("Connexion impossible avec l'hôte."); return; }
+  hostConn = null;
+  if (!reconnecting) { reconnecting = true; rejoinUntil = performance.now() + 120000; releaseKeys(); }
+  $('lobbyMsg').textContent = 'Connexion perdue, reconnexion…';
+  schedRejoin(1200);
+}
+function schedRejoin(ms) { clearTimeout(rejoinTimer); rejoinTimer = setTimeout(tryRejoin, ms); }
+function tryRejoin() {
+  if (!peer || !reconnecting) return;
+  if (performance.now() > rejoinUntil || peer.destroyed) { leave(true); menuMsg("Connexion perdue avec l'hôte."); return; }
+  if (peer.disconnected) { try { peer.reconnect(); } catch (e) {} schedRejoin(2500); return; }
+  if (hostConn && hostConn.open) return;
+  connectHost();
+  schedRejoin(5000);
 }
 
 function onClientData(d) {
   if (!d || typeof d !== 'object') return;
   if (d.t === 'lobby') {
+    joined = true; reconnecting = false;
     lobbyPlayers = d.players; Object.assign(settings, d.settings); roomCode = d.code;
-    G = null; menuMsg(''); showLobby();
+    G = null; menuMsg(''); $('lobbyMsg').textContent = ''; showLobby();
   } else if (d.t === 'err') {
-    const m = d.m; leave(); menuMsg(m);
+    const m = d.m; leave(true); menuMsg(m);
+  } else if (d.t === 'bye') {
+    leave(true); menuMsg("L'hôte a quitté la partie.");
   } else if (d.t === 'start') {
+    joined = true; reconnecting = false;
     Object.assign(settings, d.settings);
     buildTerrain(d.spec);
-    const cr = d.cr.map(a => ({ id: a[0], team: a[1], name: a[2], x: a[3], y: a[4], hp: 100, dead: false, drowned: false, face: 1, aim: -0.5 }));
+    for (const b of d.hist || []) carve(b[0], b[1], b[2]);
+    const cr = d.cr.map(a => ({ id: a[0], team: a[1], name: a[2], x: a[3], y: a[4], hp: a[5] ?? 100, dead: a[6] > 0, drowned: a[6] === 2, face: a[7] || 1, aim: a[8] ?? -0.5 }));
     initGame(d.teams, cr);
   } else if (d.t === 's' && G) {
     applySnap(d); handleCommon(d);
@@ -656,10 +769,17 @@ function sendEvent(type, w) {
 function setKey(k, v) { if (keys[k] === v) return; keys[k] = v; sendInput(); }
 function releaseKeys() { let ch = false; for (const k in keys) if (keys[k]) { keys[k] = false; ch = true; } if (ch) sendInput(); document.querySelectorAll('#hud .on').forEach(b => b.classList.remove('on')); }
 
-function leave() {
+// silent = départ subi (erreur) ; sinon on prévient les autres qu'on quitte volontairement
+function leave(silent) {
   const p = peer; peer = null;
-  try { if (p) p.destroy(); } catch (e) {}
-  conns.clear(); hostConn = null; G = null; isHost = false; online = false; myId = 'local'; lobbyPlayers = [];
+  if (!silent) {
+    try { if (isHost) broadcast({ t: 'bye' }); else if (hostConn && hostConn.open) hostConn.send({ t: 'bye' }); } catch (e) {}
+  }
+  setTimeout(() => { try { if (p) p.destroy(); } catch (e) {} }, silent ? 0 : 300);
+  clearTimeout(rejoinTimer); clearTimeout(joinTimeout);
+  conns.clear(); peerTok.clear(); hostConn = null; G = null; isHost = false; online = false; myId = 'local'; lobbyPlayers = [];
+  joined = false; reconnecting = false;
+  try { sessionStorage.removeItem('grubz-room'); } catch (e) {}
   history.replaceState(null, '', location.pathname);
   $('joinBox').hidden = true;
   showScreen('menu');
@@ -975,7 +1095,7 @@ function drawHud(t) {
     const y = top + i * 16;
     ctx.fillStyle = 'rgba(0,0,0,.45)'; roundRect(8, y, 150, 13, 4); ctx.fill();
     ctx.fillStyle = tm.color; roundRect(8, y, Math.max(0, 150 * hp / maxHp), 13, 4); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText(tm.name + (i === g.tt ? ' ◀' : ''), 13, y + 10.5);
+    ctx.fillStyle = '#fff'; ctx.fillText(tm.name + (tm.away ? ' 💤' : '') + (i === g.tt ? ' ◀' : ''), 13, y + 10.5);
   });
   // timer + vent
   const cx = VW / 2;
@@ -1007,6 +1127,11 @@ function drawHud(t) {
     ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.font = '900 30px system-ui,sans-serif';
     ctx.lineWidth = 5; ctx.strokeStyle = '#000a'; ctx.strokeText(banner.txt, cx, VH * 0.38); ctx.fillStyle = banner.col; ctx.fillText(banner.txt, cx, VH * 0.38);
     ctx.globalAlpha = 1;
+  }
+  if (reconnecting) {
+    ctx.textAlign = 'center'; ctx.font = 'bold 16px system-ui,sans-serif';
+    ctx.fillStyle = 'rgba(0,0,0,.7)'; roundRect(cx - 150, VH * 0.5 - 22, 300, 44, 14); ctx.fill();
+    ctx.fillStyle = '#ffc93c'; ctx.fillText('📡 Reconnexion à la partie…', cx, VH * 0.5 + 6);
   }
   if (VH > VW * 1.1) {
     ctx.textAlign = 'center'; ctx.font = 'bold 13px system-ui,sans-serif';
@@ -1040,6 +1165,8 @@ $('name').addEventListener('change', () => { try { localStorage.setItem('grubz-n
 
 const urlRoom = new URLSearchParams(location.search).get('room');
 if (urlRoom) { $('joinBox').hidden = false; $('joinCode').textContent = urlRoom.toUpperCase(); }
+let wasIn = null; try { wasIn = sessionStorage.getItem('grubz-room'); } catch (e) {}
+if (urlRoom && wasIn && wasIn === urlRoom.toUpperCase() && $('name').value.trim()) setTimeout(() => joinRoom(urlRoom), 300);
 
 function needName() { if (!$('name').value.trim()) { menuMsg("Choisis d'abord un pseudo 🙂"); $('name').focus(); return false; } try { localStorage.setItem('grubz-name', $('name').value.trim()); } catch (e) {} return true; }
 $('btnHost').onclick = () => { audio(); if (needName()) hostCreate(); };
@@ -1065,7 +1192,7 @@ $('plist').onclick = e => {
 $('optPer').onchange = () => { settings.per = +$('optPer').value; broadcastLobby(); };
 $('optTurn').onchange = () => { settings.turn = +$('optTurn').value; broadcastLobby(); };
 $('btnStart').onclick = () => { audio(); if (lobbyPlayers.length >= 2) hostStartGame(); };
-$('btnLeave').onclick = () => leave();
+$('btnLeave').onclick = () => leave(false);
 $('btnShare').onclick = async () => {
   const url = location.origin + location.pathname + '?room=' + roomCode;
   const data = { title: 'Grubz Arena', text: 'Rejoins ma partie de Grubz Arena ! Code : ' + roomCode, url };
@@ -1076,9 +1203,10 @@ $('btnShare').onclick = async () => {
 $('btnAgain').onclick = () => {
   if (!isHost) return;
   G = null;
+  if (online) { const live = liveToks(); lobbyPlayers = lobbyPlayers.filter(p => live.has(p.owner)); }
   showLobby(); broadcastLobby();
 };
-$('btnMenu').onclick = () => leave();
+$('btnMenu').onclick = () => leave(false);
 
 // Contrôles tactiles
 document.querySelectorAll('#hud [data-k]').forEach(b => {

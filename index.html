@@ -65,7 +65,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 <div id="menu" class="screen"><div class="panel">
   <svg class="logo anim" width="130" height="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h1>DINO<span>BOUM</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v10</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v11</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -183,6 +183,7 @@ const POWERS = {
   trap:   { txt: '💥 Piège ! Raté !',      w: 7 },
   dizzy:  { txt: '😵 Tournis pour le suivant !', w: 7, icon: '😵' },
 };
+const ROPE_RANGE = 720; // portée du grappin
 const PEER_PREFIX = 'dinoboum-v1-';
 // Identifiant persistant de l'appareil : permet de revenir dans une partie en cours
 let TOKEN = new URLSearchParams(location.search).get('tok');
@@ -313,6 +314,7 @@ function buildTerrain(spec) {
     }
   }
   tctx.putImageData(img, 0, 0);
+  bevelTerrain();
   // fossiles de dinos enfouis 🦴
   const fr = mulberry(spec.seed + 99);
   tctx.save(); tctx.globalCompositeOperation = 'source-atop';
@@ -339,11 +341,30 @@ function carveMask(cx, cy, r) {
   const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(H - 1, Math.ceil(cy + r)), r2 = r * r;
   for (let y = y0; y <= y1; y++) { const dy = y - cy; for (let x = x0; x <= x1; x++) { const dx = x - cx; if (dx * dx + dy * dy <= r2) mask[y * W + x] = 0; } }
 }
+let tb = null, tbctx = null;   // copie sombre du terrain : donne l'épaisseur (effet 3D)
+function bevelTerrain() {
+  // liseré lumineux en haut / ombre en bas sur les bords du terrain
+  const img = tctx.getImageData(0, 0, W, H), d = img.data;
+  for (let y = 3; y < H - 3; y++) for (let x = 2; x < W - 2; x++) {
+    const i = y * W + x; if (!mask[i]) continue;
+    const p = i * 4;
+    if (!mask[i - 3 * W - 2]) { d[p] = Math.min(255, d[p] + 34); d[p + 1] = Math.min(255, d[p + 1] + 30); d[p + 2] = Math.min(255, d[p + 2] + 22); }
+    else if (!mask[i + 3 * W + 2]) { d[p] *= 0.62; d[p + 1] *= 0.62; d[p + 2] *= 0.68; }
+  }
+  tctx.putImageData(img, 0, 0);
+  tb = document.createElement('canvas'); tb.width = W; tb.height = H; tbctx = tb.getContext('2d');
+  tbctx.drawImage(tc, 0, 0);
+  tbctx.globalCompositeOperation = 'source-atop'; tbctx.fillStyle = 'rgba(25,14,30,.78)'; tbctx.fillRect(0, 0, W, H);
+  tbctx.globalCompositeOperation = 'source-over';
+}
 function carve(cx, cy, r) {
   carveMask(cx, cy, r);
+  if (tbctx) { tbctx.save(); tbctx.globalCompositeOperation = 'destination-out'; tbctx.beginPath(); tbctx.arc(cx, cy, r, 0, 7); tbctx.fill(); tbctx.restore(); }
   tctx.save();
   tctx.globalCompositeOperation = 'source-atop';
-  tctx.fillStyle = '#4a2f1c'; tctx.beginPath(); tctx.arc(cx, cy, r + 4, 0, 7); tctx.fill();
+  const rg = tctx.createRadialGradient(cx - r * 0.25, cy - r * 0.35, r * 0.9, cx, cy, r + 7);
+  rg.addColorStop(0, '#2a180c'); rg.addColorStop(0.6, '#4a2f1c'); rg.addColorStop(1, 'rgba(74,47,28,0)');
+  tctx.fillStyle = rg; tctx.beginPath(); tctx.arc(cx, cy, r + 7, 0, 7); tctx.fill();
   tctx.globalCompositeOperation = 'destination-out';
   tctx.beginPath(); tctx.arc(cx, cy, r, 0, 7); tctx.fill();
   tctx.restore();
@@ -530,7 +551,7 @@ function walk(c, dir) {
   c.face = dir;
   const nx = c.x + dir * (G.pw.turbo ? 2.4 : 1.1);
   if (!hitCirc(nx, c.y)) { c.x = nx; for (let k = 0; k < 6; k++) { if (!hitCirc(c.x, c.y + 1)) c.y += 1; else break; } }
-  else { for (let up = 1; up <= 7; up++) if (!hitCirc(nx, c.y - up)) { c.x = nx; c.y -= up; break; } }
+  else { for (let up = 1; up <= 11; up++) if (!hitCirc(nx, c.y - up)) { c.x = nx; c.y -= up; break; } }
   if (!grounded(c)) { c.air = true; c.vx = dir * 0.9; c.vy = 0; }
 }
 
@@ -542,7 +563,7 @@ function updCreature(c) {
   if (c.rope) {
     const r = c.rope;
     c.vy += GRAV * gmul(); c.vx *= 0.996; c.vy *= 0.996;
-    const sp = Math.hypot(c.vx, c.vy); if (sp > 9) { c.vx *= 9 / sp; c.vy *= 9 / sp; }
+    const sp = Math.hypot(c.vx, c.vy); if (sp > 11) { c.vx *= 11 / sp; c.vy *= 11 / sp; }
     let nx = c.x + c.vx, ny = c.y + c.vy;
     const dx = nx - r.ax, dy = ny - r.ay, d = Math.hypot(dx, dy);
     if (d > r.len) { nx = r.ax + dx / d * r.len; ny = r.ay + dy / d * r.len; }
@@ -552,7 +573,7 @@ function updCreature(c) {
     if (c.y > WATER) { c.rope = null; drown(c); }
     return;
   }
-  if (!c.air) { if (!grounded(c)) { c.air = true; c.vx = 0; c.vy = 0; } else return; }
+  if (!c.air) { if (!grounded(c)) { c.air = true; c.vx = 0; c.vy = 0; } else { if (hitCirc(c.x, c.y - 1) && !hitCirc(c.x, c.y - 4)) c.y -= 3; return; } }
   c.vy = Math.min(c.vy + GRAV * gmul(), 13);
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(c.vx), Math.abs(c.vy)))), dx = c.vx / n, dy = c.vy / n;
   for (let i = 0; i < n; i++) {
@@ -562,7 +583,7 @@ function updCreature(c) {
       const impact = c.vy;
       if (!hitCirc(nx, c.y)) c.x = nx;
       if (Math.abs(c.vx) > 3 && impact < 6) { c.vy *= -0.3; c.vx *= 0.6; break; }
-      c.air = false; c.vx = 0; c.vy = 0;
+      c.air = false; c.vx = 0; c.vy = 0; c.flipped = false;
       if (impact > 7.5 && !c.noFall) damage(c, Math.round((impact - 7.5) * 5));
       c.noFall = false;
       break;
@@ -670,13 +691,13 @@ function fire() {
     case 'rope': {
       // le grappin ne termine pas le tour : on peut se balancer puis tirer
       g.charge = 0;
-      let hx = c.x + dx * (CR + 2), hy = c.y + dy * (CR + 2), hit = false;
-      for (let i = 0; i < 170; i++) { hx += dx * 2; hy += dy * 2; if (solid(hx, hy)) { hit = true; break; } if (hy < 0 || hx < 0 || hx > W) break; }
+      const hit = ropeCast(c, dx, dy);
       if (hit) {
-        c.rope = { ax: Math.round(hx), ay: Math.round(hy), len: Math.max(20, Math.hypot(hx - c.x, hy - c.y) - 4) };
-        c.air = true; g.ignoreF = true; g.sfx.push('rope');
+        const d = Math.hypot(hit[0] - c.x, hit[1] - c.y);
+        c.rope = { ax: hit[0], ay: hit[1], len: Math.max(20, d * 0.82) };  // la corde se tend : on décolle
+        c.air = true; c.vx += dx * 1.5; c.vy += -1.5; g.ignoreF = true; g.sfx.push('rope');
       } else { am[g.weapon]++; g.texts.push([Math.round(c.x), Math.round(c.y - 34), 'Trop loin !', '#fff']); g.ignoreF = true; }
-      g.weapon = 0;
+      if (am[g.weapon] === 0) g.weapon = 0;   // on reste sur le grappin tant qu'il en reste
       return;
     }
   }
@@ -741,6 +762,15 @@ function teleport(c) {
   G.texts.push([Math.round(c.x), Math.round(c.y - 34), 'Pouf !', '#d4a6ff']);
 }
 
+function ropeCast(c, dx, dy) {
+  let hx = c.x + dx * (CR + 2), hy = c.y + dy * (CR + 2);
+  for (let i = 0; i < ROPE_RANGE / 2; i++) {
+    hx += dx * 2; hy += dy * 2;
+    if (solid(hx, hy)) return [Math.round(hx), Math.round(hy)];
+    if (hy < 0 || hx < 0 || hx > W || hy > WATER) return null;
+  }
+  return null;
+}
 function eggSurprise(x, y) {
   const g = G, r = Math.random();
   g.fxe.push(['confetti', Math.round(x), Math.round(y)]);
@@ -813,7 +843,14 @@ function hostTick() {
   for (const e of events) {
     if (e.o !== owner) continue;
     if (e.type === 'jump' && canMove && act.rope) { releaseRope(act); continue; }
-    if (e.type === 'jump' && canMove && !act.air) { act.vx = act.face * 2.4; act.vy = -4.4; act.air = true; g.sfx.push('jump'); if (Math.random() < 0.35) say(act, 'jump'); }
+    if (e.type === 'jump' && canMove && act.air && act.jumpT && tickN - act.jumpT < 22 && !act.flipped) {
+      // double appui = salto arrière, très haut
+      act.vy = -6.6; act.vx = -act.face * 1.3; act.flipped = true; act.flip = 1; g.sfx.push('jump'); say(act, 'jump', true);
+    }
+    if (e.type === 'jump' && canMove && !act.air) {
+      for (let k = 0; k < 6 && hitCirc(act.x, act.y); k++) act.y -= 1;   // décoince si on est collé au sol
+      act.vx = act.face * 2.5; act.vy = -5; act.air = true; act.jumpT = tickN; act.flipped = false; g.sfx.push('jump'); if (Math.random() < 0.35) say(act, 'jump');
+    }
     if (e.type === 'wp' && g.phase === 'aim' && g.charge === 0 && WEAPONS[e.w] && g.ammo[g.tt][e.w] !== 0) g.weapon = e.w;
   }
   events.length = 0;
@@ -822,9 +859,10 @@ function hostTick() {
   const L_ = dz ? inp.r : inp.l, R_ = dz ? inp.l : inp.r;
   if (canMove && act.rope) {
     const r = act.rope;
-    if (L_) act.vx -= 0.12; if (R_) act.vx += 0.12;
-    if (inp.u) r.len = Math.max(18, r.len - 1.8);
-    if (inp.d) r.len = Math.min(340, r.len + 1.8);
+    const slack = Math.hypot(act.x - r.ax, act.y - r.ay) < r.len - 2;
+    if (L_) act.vx -= slack ? 0.06 : 0.26; if (R_) act.vx += slack ? 0.06 : 0.26;
+    if (inp.u) r.len = Math.max(16, r.len - 3);
+    if (inp.d) r.len = Math.min(ROPE_RANGE, r.len + 3);
     if (inp.f && !prevF[owner]) releaseRope(act);
     if (act.dmgTaken > 0) releaseRope(act);
     if (owner) prevF[owner] = !!inp.f;
@@ -860,7 +898,7 @@ function snapshot() {
   const g = G;
   return {
     t: 's',
-    c: g.cr.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10, c.hp, c.dead ? (c.drowned ? 2 : 1) : 0, c.face, Math.round(c.aim * 100) / 100, c.shield ? 1 : 0, c.rope ? [c.rope.ax, c.rope.ay] : 0]),
+    c: g.cr.map(c => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10, c.hp, c.dead ? (c.drowned ? 2 : 1) : 0, c.face, Math.round(c.aim * 100) / 100, c.shield ? 1 : 0, c.rope ? [c.rope.ax, c.rope.ay] : 0, c.air && c.flipped ? 1 : 0]),
     p: g.proj.filter(p => !(p.delay > 0)).map(p => [p.type, Math.round(p.x), Math.round(p.y), Math.round(Math.atan2(p.vy, p.vx) * 10) / 10, p.fuse !== undefined ? Math.max(0, Math.ceil(p.fuse / 60)) : 0]),
     ph: g.phase, tt: g.tt, ac: g.ac, tm: g.tm, wd: g.wind, ch: Math.round(g.charge * 100) / 100, w: g.weapon,
     am: g.tt >= 0 ? g.ammo[g.tt] : null, wn: g.winner, aw: g.teams.map(t => t.away ? 1 : 0),
@@ -872,7 +910,7 @@ function snapshot() {
 /* ================= Client : application des snapshots ================= */
 function applySnap(s) {
   const g = G; if (!g) return;
-  s.c.forEach((a, i) => { const c = g.cr[i]; if (!c) return; c.x = a[0]; c.y = a[1]; c.hp = a[2]; c.dead = a[3] > 0; c.drowned = a[3] === 2; c.face = a[4]; c.aim = a[5]; c.shield = !!a[6]; c.rope = a[7] ? { ax: a[7][0], ay: a[7][1] } : null; });
+  s.c.forEach((a, i) => { const c = g.cr[i]; if (!c) return; c.x = a[0]; c.y = a[1]; c.hp = a[2]; c.dead = a[3] > 0; c.drowned = a[3] === 2; c.face = a[4]; c.aim = a[5]; c.shield = !!a[6]; c.rope = a[7] ? { ax: a[7][0], ay: a[7][1] } : null; if (a[8] && !c.flipVis) c.flipVis = 1; if (!a[8]) c.flipVis = 0; });
   g.kv = s.k || []; g.pwl = s.pw || [];
   g.pv = s.p.map(a => ({ type: a[0], x: a[1], y: a[2], ang: a[3], fs: a[4] }));
   g.phase = s.ph; g.tt = s.tt; g.ac = s.ac; g.tm = s.tm; g.wind = s.wd; g.charge = s.ch; g.weapon = s.w; g.am = s.am; g.winner = s.wn;
@@ -1442,8 +1480,9 @@ function dinoEye(ex, ey, r, ax, ay) {
   ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + ax * r * 0.4, ey + ay * r * 0.4, r * 0.55, 0, 7); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex + ax * r * 0.4 - r * 0.2, ey + ay * r * 0.4 - r * 0.2, r * 0.18, 0, 7); ctx.fill();
 }
+let volFill = null, volCol = null;
 function blob(x, y, rx, ry, fill, rot) {
-  ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot || 0, 0, 7); ctx.fill();
+  ctx.fillStyle = (fill === volCol && volFill) ? volFill : fill; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot || 0, 0, 7); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1; ctx.stroke();
 }
 function poly(pts, fill) {
@@ -1454,6 +1493,7 @@ function poly(pts, fill) {
 function drawDino(c, col, active, t) {
   const dark = shade(col, 0.6), light = shade(col, 1.35);
   blinkNow = ((t + (c.id || 0) * 977) % 3400) < 110;
+  volCol = col;
   if (!c.air) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(c.rx, c.ry + CR, 9, 2.2, 0, 0, 7); ctx.fill(); }
   const step = active && !c.air ? Math.sin(t * 0.02) : 0;
   const bob = active ? Math.sin(t * 0.008) * 0.6 : 0;
@@ -1463,6 +1503,9 @@ function drawDino(c, col, active, t) {
   ctx.fillStyle = dark;
   roundRect(-5, 3 + step * 0.6, 3.5, 6.5, 1.5); ctx.fill();
   roundRect(1.5, 3 - step * 0.6, 3.5, 6.5, 1.5); ctx.fill();
+  const vg = ctx.createRadialGradient(-3, -6, 1, 1, 1, 15);
+  vg.addColorStop(0, light); vg.addColorStop(0.45, col); vg.addColorStop(1, dark); volFill = vg;
+  if (c.flipVis) { c.flipVis += 0.35; ctx.rotate(-c.flipVis); }
   const k = c.kind || 0;
   if (k === 0) {            // T-rex rigolo : grosse tête, petits bras
     poly([-4, -1, -16, 3, -4, 5], col);
@@ -1537,6 +1580,12 @@ function drawAim(c, team, t) {
     ctx.strokeStyle = '#0008'; ctx.lineWidth = 1; ctx.stroke();
   }
   if (G.phase !== 'aim' || c.rope) return;
+  if (w.id === 'rope') {
+    const hit = ropeCast(c, ax, ay), ex = hit ? hit[0] : c.rx + ax * ROPE_RANGE, ey = hit ? hit[1] : c.ry + ay * ROPE_RANGE;
+    ctx.strokeStyle = hit ? 'rgba(120,255,140,.8)' : 'rgba(255,90,90,.6)'; ctx.lineWidth = 1.4; ctx.setLineDash([4, 5]);
+    ctx.beginPath(); ctx.moveTo(c.rx, c.ry); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]);
+    if (hit) { ctx.strokeStyle = '#7dff8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ex, ey, 5, 0, 7); ctx.stroke(); }
+  }
   drawHeld(c, w.id, t);
   if (w.id === 'meteor') {
     const tx = x + c.face * (60 + G.charge * 600), sy = findSurface(tx);
@@ -1674,6 +1723,7 @@ function render(t, dt) {
   if (cam.shake > 0.3) { sx = (Math.random() - 0.5) * cam.shake; sy = (Math.random() - 0.5) * cam.shake; cam.shake *= 0.88; }
   ctx.setTransform(DPR * s, 0, 0, DPR * s, DPR * (L.x + L.w / 2 - cam.x * s + sx), DPR * (L.y + L.h / 2 - cam.y * s + sy));
   drawWater(t, false);
+  if (tb) ctx.drawImage(tb, 6, 8);   // épaisseur du terrain
   ctx.drawImage(tc, 0, 0);
   // fumée & débris
   for (let i = fx.length - 1; i >= 0; i--) {

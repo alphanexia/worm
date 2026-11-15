@@ -38,7 +38,7 @@ summary{font-weight:700;cursor:pointer}
 #plist li small{opacity:.6;font-weight:400}
 #plist li button{margin-left:auto;padding:4px 10px;background:#fff2}
 .dot{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:0 0 0 2px #0006}
-.code{font-size:30px;letter-spacing:6px;text-align:center;font-weight:900;color:#ffc93c}
+.code{font-size:56px;letter-spacing:8px;text-align:center;font-weight:900;color:#ffc93c}
 label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 #hud button{position:relative;width:62px;height:62px;border-radius:50%;padding:0;font-size:24px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.35);box-shadow:0 3px 0 #0005;color:#fff;touch-action:none;backdrop-filter:blur(2px)}
 #hud button.on{background:rgba(255,255,255,.45);transform:translateY(2px)}
@@ -54,12 +54,10 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 #hud #wmenu button{width:min(70px,16vw);height:58px;border-radius:12px;font-size:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
 #hud #wmenu button small{font-size:11px;font-weight:700}
 #hud #wmenu button.sel{background:rgba(255,201,60,.45)}
-@media (orientation: portrait){
-  #hud button{width:56px;height:56px;font-size:22px}
-  #hud #bFire{width:76px;height:76px;font-size:17px}
-  #ctlL,#ctlR{gap:10px}
-  #ctlR .col{gap:8px}
-}
+#hud button{width:56px;height:56px;font-size:22px}
+#hud #bFire{width:76px;height:76px;font-size:17px}
+#ctlL,#ctlR{gap:10px}
+#ctlR .col{gap:8px}
 </style>
 </head>
 <body>
@@ -68,7 +66,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 
 <div id="menu" class="screen"><div class="panel">
   <h1>GRUBZ<span>ARENA</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v5</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v6</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -77,13 +75,13 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
   <button id="btnHost" class="big">Créer une partie en ligne</button>
   <button id="btnLocal" class="alt">Partie locale (même écran)</button>
   <button id="btnFS" class="alt">📲 Jouer en plein écran</button>
-  <div class="row"><input id="codeIn" placeholder="CODE" maxlength="5" autocomplete="off" style="text-transform:uppercase"><button id="btnJoinCode">Rejoindre</button></div>
+  <div class="row"><input id="codeIn" placeholder="Code (2 chiffres)" maxlength="2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="text-align:center;font-size:20px;letter-spacing:4px"><button id="btnJoinCode">Rejoindre</button></div>
   <p id="menuMsg" class="msg"></p>
   <details><summary>Comment jouer ?</summary>
     <p>Chaque joueur dirige une équipe de Grubz. À ton tour : déplace-toi (◀ ▶), saute (⤴), vise (▲ ▼), choisis une arme (en haut à droite) puis <b>maintiens FEU</b> pour doser la puissance et relâche pour tirer.</p>
     <p>Le vent dévie le bazooka. Tombe à l'eau = éliminé. La dernière équipe en vie gagne !</p>
     <p>Clavier : flèches, Espace = tirer, Entrée = sauter, 1-6 = armes.</p>
-    <p>Joue de préférence le téléphone en mode paysage.</p>
+    <p>Le jeu se joue téléphone tenu à la verticale.</p>
   </details>
 </div></div>
 
@@ -168,7 +166,7 @@ const POWERS = {
   shield: { txt: '🛡️ Bouclier !',         w: 9 },
   trap:   { txt: '💥 Piège ! Raté !',      w: 10 },
 };
-const PEER_PREFIX = 'grubz-arena-v1-';
+const PEER_PREFIX = 'grubz-arena-v2-';
 // Identifiant persistant de l'appareil : permet de revenir dans une partie en cours
 let TOKEN = new URLSearchParams(location.search).get('tok');
 if (!TOKEN) { try { TOKEN = localStorage.getItem('grubz-tok'); } catch (e) {} }
@@ -297,14 +295,14 @@ function hostStartGame() {
   const spec = genSpec(seed);
   buildTerrain(spec);
   const teams = lobbyPlayers.map((p, i) => ({ name: p.name, color: COLORS[i], owner: p.owner, ci: 0, stash: [] }));
-  const r = mulberry(seed + 1), names = shuffle(NAMES.slice(), r), cr = [], usedX = [];
+  const r = mulberry(seed + 1), cr = [], usedX = [];
   let id = 0;
   for (let k = 0; k < settings.per; k++) for (let t = 0; t < teams.length; t++) {
     let x, y, tries = 0;
     do { x = 70 + r() * (W - 140); y = findSurface(x); tries++; }
     while (tries < 300 && (y < 0 || y > WATER - 50 || usedX.some(u => Math.abs(u - x) < 45)));
     usedX.push(x);
-    const c = { id, team: t, name: names[id % names.length], x, y: y - CR - 2, vx: 0, vy: 0, hp: 100, dead: false, drowned: false, face: x < W / 2 ? 1 : -1, aim: -0.5, air: true, dmgTaken: 0 };
+    const c = { id, team: t, name: settings.per > 1 ? teams[t].name + ' ' + (k + 1) : teams[t].name, x, y: y - CR - 2, vx: 0, vy: 0, hp: 100, dead: false, drowned: false, face: x < W / 2 ? 1 : -1, aim: -0.5, air: true, dmgTaken: 0 };
     for (let i = 0; i < 40 && hitCirc(c.x, c.y); i++) c.y -= 1;
     cr.push(c); id++;
   }
@@ -718,7 +716,7 @@ function broadcast(m) { for (const c of conns.values()) if (c.open) { try { c.se
 function lobbyMsg() { return { t: 'lobby', players: lobbyPlayers.map(p => ({ name: p.name, owner: p.owner })), settings, code: roomCode }; }
 function broadcastLobby() { broadcast(lobbyMsg()); }
 
-function makeCode() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
+function makeCode() { return String(10 + Math.floor(Math.random() * 90)); } // code simple à 2 chiffres
 
 function hostCreate() {
   if (typeof Peer === 'undefined') { menuMsg('Module réseau non chargé. Vérifie ta connexion internet.'); return; }
@@ -842,8 +840,8 @@ function forfeit(tok) {
 
 /* ---------- Côté invité ---------- */
 function joinRoom(code) {
-  code = (code || '').toUpperCase().trim();
-  if (code.length !== 5) { menuMsg('Le code fait 5 caractères.'); return; }
+  code = String(code || '').replace(/\D/g, '');
+  if (code.length !== 2) { menuMsg('Le code fait 2 chiffres.'); return; }
   if (typeof Peer === 'undefined') { menuMsg('Module réseau non chargé. Vérifie ta connexion internet.'); return; }
   if (peer) leave(true);
   menuMsg('Connexion à la partie ' + code + '…');
@@ -1071,29 +1069,30 @@ function addFxEvent(e) {
 const cv = $('cv'), ctx = cv.getContext('2d');
 let DPR = 1, VW = 0, VH = 0;
 /* Mise en page : plein écran en paysage ; en portrait = bandeau infos + mini-carte + vue carrée + boutons en bas */
-const L = { portrait: false, x: 0, y: 0, w: 0, h: 0, mini: null, hudTop: 0 };
-const MINI_Y0 = 250; // haut de la zone affichée sur la mini-carte (le ciel au-dessus est inutile)
+const L = { portrait: true, x: 0, y: 0, w: 0, h: 0, mini: null, hudTop: 0, col: { x: 0, w: 0 } };
 let SAT = 0, SAB = 0, domKey = '';
+// Toujours en vertical : colonne type téléphone (centrée sur un écran large)
 function computeLayout() {
-  L.portrait = VH > VW * 1.15;
-  if (!L.portrait) { L.x = 0; L.y = 0; L.w = VW; L.h = VH; L.mini = null; L.hudTop = 0; }
-  else {
-    const top = SAT + 6, hudH = 44;
-    const mh = Math.round(Math.min((VW - 12) * (H - MINI_Y0) / W, VH * 0.16));
-    const mw = Math.round(Math.min(VW - 12, mh * W / (H - MINI_Y0)));
-    L.mini = { x: Math.round((VW - mw) / 2), y: top + hudH, w: mw, h: mh };
-    const vy = L.mini.y + mh + 8;
-    const side = Math.round(Math.max(160, Math.min(VW, VH - vy - (228 + SAB))));
-    L.x = Math.round((VW - side) / 2); L.y = vy; L.w = side; L.h = side; L.hudTop = top;
-  }
+  L.portrait = true;
+  const colW = Math.min(VW, Math.round(VH * 0.62)), colX = Math.round((VW - colW) / 2);
+  L.col = { x: colX, w: colW };
+  const top = SAT + 6;
+  const mw = colW - 12, mh = Math.round(mw * 9 / 16);      // vue de loin en 16/9
+  const sc = mw / W;
+  L.mini = { x: colX + 6, y: top, w: mw, h: mh, sc, y0: H + 6 - mh / sc };
+  const vy = top + mh + 6;
+  L.x = colX; L.y = vy; L.w = colW; L.h = Math.max(120, VH - vy - (226 + SAB)); L.hudTop = top;
   applyDomLayout();
 }
 function applyDomLayout() {
-  const key = L.portrait + ':' + L.y + ':' + L.h;
+  const key = [VW, VH, L.x, L.y, L.h, L.w].join(':');
   if (key === domKey) return; domKey = key;
+  const right = (VW - (L.col.x + L.col.w)) + 'px';
   const tb = $('topBtns'), wm = $('wmenu');
-  if (L.portrait) { tb.style.top = (L.y + L.h + 8) + 'px'; wm.style.top = (L.y + 6) + 'px'; }
-  else { tb.style.top = ''; wm.style.top = ''; }
+  tb.style.top = (L.y + L.h + 8) + 'px'; tb.style.right = 'calc(10px + ' + right + ')';
+  wm.style.top = (L.y + 6) + 'px'; wm.style.right = 'calc(6px + ' + right + ')';
+  $('ctlL').style.left = 'calc(12px + ' + L.col.x + 'px)';
+  $('ctlR').style.right = 'calc(12px + ' + right + ')';
 }
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight;
@@ -1269,11 +1268,9 @@ function drawWater(t, front) {
 function updCam(dt) {
   const g = G;
   const fit = Math.min(L.w / W, L.h / (H * 0.85));
-  if (L.portrait) cam.s = cam.overview ? L.w / 800 : L.w / 330;
-  else cam.s = cam.overview ? fit : Math.max(fit, Math.min(L.h / 430, L.w / 760, 2.4));
+  cam.s = cam.overview ? L.w / 800 : L.w / 330;
   const s = cam.s, pv = projView();
-  if (cam.overview && !L.portrait) { cam.x = W / 2; cam.y = H - L.h / 2 / s + 20; }
-  else if (performance.now() > cam.manualUntil) {
+  if (performance.now() > cam.manualUntil) {
     let tx = null, ty = null, k = 0.08;
     if (pv.length) { tx = pv[0].x; ty = pv[0].y; k = 0.15; }
     else if (g.ac >= 0 && g.cr[g.ac] && !g.cr[g.ac].dead) { tx = g.cr[g.ac].rx; ty = g.cr[g.ac].ry; }
@@ -1290,14 +1287,14 @@ function render(t, dt) {
   const pm = G && tc && L.portrait;
   if (pm) {
     ctx.fillStyle = '#12142a'; ctx.fillRect(0, 0, VW, VH);
-    ctx.save(); roundRect(L.x, L.y, L.w, L.h, L.x > 2 ? 10 : 0); ctx.clip();
+    ctx.save(); ctx.beginPath(); ctx.rect(L.x, L.y, L.w, L.h); ctx.clip();
     ctx.translate(L.x, L.y);
   }
   drawSky(t);
   if (pm) ctx.restore();
   if (!G || !tc) return;
   ctx.save();
-  if (pm) { roundRect(L.x, L.y, L.w, L.h, L.x > 2 ? 10 : 0); ctx.clip(); }
+  if (pm) { ctx.beginPath(); ctx.rect(L.x, L.y, L.w, L.h); ctx.clip(); }
   const g = G, s = cam.s;
   for (const c of g.cr) {
     if (isHost || c.rx === undefined || Math.hypot(c.x - c.rx, c.y - c.ry) > 120) { c.rx = c.x; c.ry = c.y; }
@@ -1348,7 +1345,7 @@ function render(t, dt) {
 
 function drawHud(t) {
   const g = G;
-  if (L.portrait) drawHudPortrait(t); else drawHudLandscape(t);
+  drawHudPortrait(t);
   const cx = L.x + L.w / 2;
   const team = g.tt >= 0 ? g.teams[g.tt] : null;
   if (team && g.phase === 'aim' && !isMyTurn()) {
@@ -1392,45 +1389,22 @@ function drawWind(x, y, w, h) {
   ctx.fillRect(Math.min(cx, cx + wl), y + h / 2 - 3, Math.abs(wl), 6);
 }
 
-function drawHudLandscape(t) {
-  const g = G, top = 10, maxHp = settings.per * 100;
-  ctx.textAlign = 'left'; ctx.font = 'bold 11px system-ui,sans-serif';
-  g.teams.forEach((tm, i) => {
-    const hp = teamHp(i), y = top + i * 16;
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; roundRect(8, y, 150, 13, 4); ctx.fill();
-    ctx.fillStyle = tm.color; roundRect(8, y, Math.max(0, 150 * Math.min(1, hp / maxHp)), 13, 4); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText(tm.name + (tm.away ? ' 💤' : '') + (i === g.tt ? ' ◀' : ''), 13, y + 10.5);
-  });
-  const cx = VW / 2;
-  if (g.tt >= 0 && g.phase !== 'over') {
-    const team = g.teams[g.tt];
-    ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(cx - 34, top, 68, 34, 10); ctx.fill();
-    ctx.textAlign = 'center'; ctx.font = 'bold 22px system-ui,sans-serif';
-    ctx.fillStyle = (g.phase === 'aim' && g.tm <= 5) ? '#ff5a5a' : team.color;
-    ctx.fillText(g.phase === 'settle' ? '…' : g.tm, cx, top + 25);
-    const wy = top + 42;
-    drawWind(cx - 60, wy, 120, 14);
-    ctx.font = '9px system-ui,sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('vent', cx, wy + 25);
-    const pl = activePowers();
-    if (pl.length) { ctx.font = '16px system-ui,sans-serif'; ctx.fillText(pl.join(' '), cx, wy + 44); }
-  }
-}
-
 function drawHudPortrait(t) {
-  const g = G, top = L.hudTop, maxHp = settings.per * 100;
-  // barres d'équipes sur 2 colonnes
-  const colW = Math.floor((VW - 118) / 2);
+  const g = G, m = L.mini, maxHp = settings.per * 100;
+  drawMinimap(t);
+  // barres d'équipes en haut à gauche de la vue de loin
+  const colW = Math.floor((m.w - 112) / 2), top = m.y + 6;
   ctx.textAlign = 'left'; ctx.font = 'bold 10px system-ui,sans-serif';
   g.teams.forEach((tm, i) => {
-    const x = 8 + (i % 2) * (colW + 6), y = top + Math.floor(i / 2) * 14, hp = teamHp(i);
-    ctx.fillStyle = 'rgba(255,255,255,.08)'; roundRect(x, y, colW, 12, 4); ctx.fill();
+    const x = m.x + 6 + (i % 2) * (colW + 4), y = top + Math.floor(i / 2) * 14, hp = teamHp(i);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; roundRect(x, y, colW, 12, 4); ctx.fill();
     ctx.fillStyle = tm.color; roundRect(x, y, Math.max(0, colW * Math.min(1, hp / maxHp)), 12, 4); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText((i === g.tt ? '▶ ' : '') + tm.name + (tm.away ? ' 💤' : ''), x + 4, y + 9.5);
   });
-  // chrono + vent à droite
+  // chrono + vent en haut à droite
   if (g.tt >= 0 && g.phase !== 'over') {
-    const team = g.teams[g.tt], bx = VW - 100, bw = 92;
-    ctx.fillStyle = 'rgba(255,255,255,.08)'; roundRect(bx, top, bw, 24, 8); ctx.fill();
+    const team = g.teams[g.tt], bw = 90, bx = m.x + m.w - bw - 6;
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(bx, top, bw, 24, 8); ctx.fill();
     ctx.textAlign = 'center'; ctx.font = 'bold 18px system-ui,sans-serif';
     ctx.fillStyle = (g.phase === 'aim' && g.tm <= 5) ? '#ff5a5a' : team.color;
     ctx.fillText(g.phase === 'settle' ? '…' : g.tm, bx + bw / 2, top + 19);
@@ -1438,40 +1412,44 @@ function drawHudPortrait(t) {
     const pl = activePowers();
     if (pl.length) { ctx.textAlign = 'left'; ctx.font = '16px system-ui,sans-serif'; ctx.fillText(pl.join(' '), L.x + 8, L.y + 22); }
   }
-  drawMinimap(t);
+  // écran tenu à l'horizontale (téléphone) : on demande de le tourner
+  if (VW > VH && VH < 520) {
+    ctx.fillStyle = 'rgba(10,12,30,.92)'; ctx.fillRect(0, 0, VW, VH);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#ffc93c'; ctx.font = 'bold 20px system-ui,sans-serif';
+    ctx.fillText('📱 Tourne ton téléphone en vertical', VW / 2, VH / 2);
+  }
 }
 
 function drawMinimap(t) {
   const g = G, m = L.mini; if (!m) return;
-  const sx = m.w / W, sy = m.h / (H - MINI_Y0);
-  const X = x => m.x + x * sx, Y = y => m.y + (y - MINI_Y0) * sy;
+  const sc = m.sc, X = x => m.x + x * sc, Y = y => m.y + (y - m.y0) * sc;
   ctx.save();
-  roundRect(m.x, m.y, m.w, m.h, 6); ctx.clip();
-  const gr = ctx.createLinearGradient(0, m.y, 0, m.y + m.h); gr.addColorStop(0, '#2a2650'); gr.addColorStop(1, '#a8706a');
+  roundRect(m.x, m.y, m.w, m.h, 8); ctx.clip();
+  const gr = ctx.createLinearGradient(0, m.y, 0, m.y + m.h); gr.addColorStop(0, '#1b1f3a'); gr.addColorStop(0.6, '#4a3f7a'); gr.addColorStop(1, '#c47c68');
   ctx.fillStyle = gr; ctx.fillRect(m.x, m.y, m.w, m.h);
-  ctx.drawImage(tc, 0, MINI_Y0, W, H - MINI_Y0, m.x, m.y, m.w, m.h);
+  ctx.drawImage(tc, X(0), Y(0), W * sc, H * sc);
   ctx.fillStyle = 'rgba(40,110,200,.85)'; ctx.fillRect(m.x, Y(WATER), m.w, m.h);
   const crates = isHost ? g.crates : (g.kv || []).map(a => ({ x: a[0], y: a[1] }));
-  ctx.fillStyle = '#ffc93c'; for (const k of crates) ctx.fillRect(X(k.x) - 2, Y(k.y) - 2, 4, 4);
+  ctx.fillStyle = '#ffc93c'; for (const k of crates) ctx.fillRect(X(k.x) - 2.5, Y(k.y) - 2.5, 5, 5);
   const act = g.ac >= 0 ? g.cr[g.ac] : null;
   for (const c of g.cr) {
     if (c.dead) continue;
     const x = X(c.rx ?? c.x), y = Y(c.ry ?? c.y);
-    ctx.fillStyle = g.teams[c.team].color; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
-    if (c === act) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 0.012) * 0.5})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = g.teams[c.team].color; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#0008'; ctx.lineWidth = 1; ctx.stroke();
+    if (c === act) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 0.012) * 0.5})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 6.5, 0, 7); ctx.stroke(); }
   }
-  ctx.fillStyle = '#fff'; for (const p of projView()) { ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 1.8, 0, 7); ctx.fill(); }
-  // cadre de la vue actuelle
+  ctx.fillStyle = '#fff'; for (const p of projView()) { ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 2, 0, 7); ctx.fill(); }
   const hw = L.w / 2 / cam.s, hh = L.h / 2 / cam.s;
-  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1;
-  ctx.strokeRect(X(cam.x - hw), Y(cam.y - hh), hw * 2 * sx, hh * 2 * sy);
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.2;
+  ctx.strokeRect(X(cam.x - hw), Y(cam.y - hh), hw * 2 * sc, hh * 2 * sc);
   ctx.restore();
-  ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; roundRect(m.x, m.y, m.w, m.h, 6); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; roundRect(m.x, m.y, m.w, m.h, 8); ctx.stroke();
 }
 function inMini(x, y) { const m = L.mini; return L.portrait && m && G && x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h; }
 function camFromMini(x, y) {
   const m = L.mini;
-  cam.x = (x - m.x) / (m.w / W); cam.y = (y - m.y) / (m.h / (H - MINI_Y0)) + MINI_Y0;
+  cam.x = (x - m.x) / m.sc; cam.y = (y - m.y) / m.sc + m.y0;
   cam.manualUntil = performance.now() + 3500;
 }
 
@@ -1568,7 +1546,7 @@ function goFullscreen() {
   try {
     const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' });
     wantFS = true;
-    const lock = () => {};
+    const lock = () => { try { screen.orientation.lock('portrait').catch(() => {}); } catch (e) {} };
     if (p && p.then) p.then(lock).catch(() => {}); else lock();
   } catch (e) {}
 }

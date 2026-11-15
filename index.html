@@ -54,14 +54,21 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 #hud #wmenu button{width:min(70px,16vw);height:58px;border-radius:12px;font-size:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
 #hud #wmenu button small{font-size:11px;font-weight:700}
 #hud #wmenu button.sel{background:rgba(255,201,60,.45)}
+@media (orientation: portrait){
+  #hud button{width:56px;height:56px;font-size:22px}
+  #hud #bFire{width:76px;height:76px;font-size:17px}
+  #ctlL,#ctlR{gap:10px}
+  #ctlR .col{gap:8px}
+}
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
+<div id="sa" style="position:fixed;left:0;top:0;width:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);pointer-events:none"></div>
 
 <div id="menu" class="screen"><div class="panel">
   <h1>GRUBZ<span>ARENA</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v4</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v5</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -1063,7 +1070,37 @@ function addFxEvent(e) {
 /* ================= Rendu ================= */
 const cv = $('cv'), ctx = cv.getContext('2d');
 let DPR = 1, VW = 0, VH = 0;
-function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight; cv.width = Math.floor(VW * DPR); cv.height = Math.floor(VH * DPR); cv.style.width = VW + 'px'; cv.style.height = VH + 'px'; }
+/* Mise en page : plein écran en paysage ; en portrait = bandeau infos + mini-carte + vue carrée + boutons en bas */
+const L = { portrait: false, x: 0, y: 0, w: 0, h: 0, mini: null, hudTop: 0 };
+const MINI_Y0 = 250; // haut de la zone affichée sur la mini-carte (le ciel au-dessus est inutile)
+let SAT = 0, SAB = 0, domKey = '';
+function computeLayout() {
+  L.portrait = VH > VW * 1.15;
+  if (!L.portrait) { L.x = 0; L.y = 0; L.w = VW; L.h = VH; L.mini = null; L.hudTop = 0; }
+  else {
+    const top = SAT + 6, hudH = 44;
+    const mh = Math.round(Math.min((VW - 12) * (H - MINI_Y0) / W, VH * 0.16));
+    const mw = Math.round(Math.min(VW - 12, mh * W / (H - MINI_Y0)));
+    L.mini = { x: Math.round((VW - mw) / 2), y: top + hudH, w: mw, h: mh };
+    const vy = L.mini.y + mh + 8;
+    const side = Math.round(Math.max(160, Math.min(VW, VH - vy - (228 + SAB))));
+    L.x = Math.round((VW - side) / 2); L.y = vy; L.w = side; L.h = side; L.hudTop = top;
+  }
+  applyDomLayout();
+}
+function applyDomLayout() {
+  const key = L.portrait + ':' + L.y + ':' + L.h;
+  if (key === domKey) return; domKey = key;
+  const tb = $('topBtns'), wm = $('wmenu');
+  if (L.portrait) { tb.style.top = (L.y + L.h + 8) + 'px'; wm.style.top = (L.y + 6) + 'px'; }
+  else { tb.style.top = ''; wm.style.top = ''; }
+}
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight;
+  cv.width = Math.floor(VW * DPR); cv.height = Math.floor(VH * DPR); cv.style.width = VW + 'px'; cv.style.height = VH + 'px';
+  const st = getComputedStyle($('sa')); SAT = parseFloat(st.paddingTop) || 0; SAB = parseFloat(st.paddingBottom) || 0;
+  computeLayout();
+}
 addEventListener('resize', resize); resize();
 
 function projView() {
@@ -1072,6 +1109,7 @@ function projView() {
 }
 
 function drawSky(t) {
+  const VW = (G && tc && L.portrait) ? L.w : innerWidth, VH = (G && tc && L.portrait) ? L.h : innerHeight;
   const gr = ctx.createLinearGradient(0, 0, 0, VH);
   gr.addColorStop(0, '#1b1f3a'); gr.addColorStop(0.55, '#5a4a8a'); gr.addColorStop(1, '#f0946c');
   ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
@@ -1230,18 +1268,18 @@ function drawWater(t, front) {
 
 function updCam(dt) {
   const g = G;
-  const fit = Math.min(VW / W, VH / (H * 0.85));
-  const base = Math.max(fit, Math.min(VH / 430, VW / 760, 2.4));
-  cam.s = cam.overview ? fit : base;
+  const fit = Math.min(L.w / W, L.h / (H * 0.85));
+  if (L.portrait) cam.s = cam.overview ? L.w / 800 : L.w / 330;
+  else cam.s = cam.overview ? fit : Math.max(fit, Math.min(L.h / 430, L.w / 760, 2.4));
   const s = cam.s, pv = projView();
-  if (cam.overview) { cam.x = W / 2; cam.y = H - VH / 2 / s + 20; }
+  if (cam.overview && !L.portrait) { cam.x = W / 2; cam.y = H - L.h / 2 / s + 20; }
   else if (performance.now() > cam.manualUntil) {
     let tx = null, ty = null, k = 0.08;
     if (pv.length) { tx = pv[0].x; ty = pv[0].y; k = 0.15; }
     else if (g.ac >= 0 && g.cr[g.ac] && !g.cr[g.ac].dead) { tx = g.cr[g.ac].rx; ty = g.cr[g.ac].ry; }
     if (tx !== null) { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
   }
-  const hw = VW / 2 / s, hh = VH / 2 / s;
+  const hw = L.w / 2 / s, hh = L.h / 2 / s;
   cam.x = hw * 2 > W + 200 ? W / 2 : clamp(cam.x, hw - 100, W + 100 - hw);
   cam.y = clamp(cam.y, Math.min(hh - 250, H + 40 - hh), H + 40 - hh);
 }
@@ -1249,8 +1287,17 @@ function updCam(dt) {
 function render(t, dt) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (G && tc) updCam(dt);
+  const pm = G && tc && L.portrait;
+  if (pm) {
+    ctx.fillStyle = '#12142a'; ctx.fillRect(0, 0, VW, VH);
+    ctx.save(); roundRect(L.x, L.y, L.w, L.h, L.x > 2 ? 10 : 0); ctx.clip();
+    ctx.translate(L.x, L.y);
+  }
   drawSky(t);
+  if (pm) ctx.restore();
   if (!G || !tc) return;
+  ctx.save();
+  if (pm) { roundRect(L.x, L.y, L.w, L.h, L.x > 2 ? 10 : 0); ctx.clip(); }
   const g = G, s = cam.s;
   for (const c of g.cr) {
     if (isHost || c.rx === undefined || Math.hypot(c.x - c.rx, c.y - c.ry) > 120) { c.rx = c.x; c.ry = c.y; }
@@ -1258,7 +1305,7 @@ function render(t, dt) {
   }
   let sx = 0, sy = 0;
   if (cam.shake > 0.3) { sx = (Math.random() - 0.5) * cam.shake; sy = (Math.random() - 0.5) * cam.shake; cam.shake *= 0.88; }
-  ctx.setTransform(DPR * s, 0, 0, DPR * s, DPR * (VW / 2 - cam.x * s + sx), DPR * (VH / 2 - cam.y * s + sy));
+  ctx.setTransform(DPR * s, 0, 0, DPR * s, DPR * (L.x + L.w / 2 - cam.x * s + sx), DPR * (L.y + L.h / 2 - cam.y * s + sy));
   drawWater(t, false);
   ctx.drawImage(tc, 0, 0);
   // fumée & débris
@@ -1294,23 +1341,66 @@ function render(t, dt) {
     ctx.lineWidth = 3; ctx.strokeStyle = '#000a'; ctx.strokeText(x.txt, x.x, x.y); ctx.fillStyle = x.col; ctx.fillText(x.txt, x.x, x.y);
     ctx.globalAlpha = 1;
   }
+  ctx.restore();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   drawHud(t);
 }
 
 function drawHud(t) {
-  const g = G, top = 10;
-  // barres d'équipes
-  const maxHp = settings.per * 100;
+  const g = G;
+  if (L.portrait) drawHudPortrait(t); else drawHudLandscape(t);
+  const cx = L.x + L.w / 2;
+  const team = g.tt >= 0 ? g.teams[g.tt] : null;
+  if (team && g.phase === 'aim' && !isMyTurn()) {
+    ctx.textAlign = 'center'; ctx.font = 'bold 14px system-ui,sans-serif';
+    const msg = 'Tour de ' + team.name + '…';
+    const mw = ctx.measureText(msg).width + 24, my = L.y + L.h - 44;
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(cx - mw / 2, my, mw, 28, 14); ctx.fill();
+    ctx.fillStyle = team.color; ctx.fillText(msg, cx, my + 19);
+  }
+  if (ann && ann.life > 0) {
+    ann.life--;
+    const a = Math.min(1, ann.life / 25), sc = 1 + Math.max(0, (ann.life - 115) / 15) * 0.4;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, L.y + L.h * 0.56); ctx.scale(sc, sc);
+    ctx.textAlign = 'center'; ctx.font = `900 ${L.portrait ? 18 : 22}px system-ui,sans-serif`;
+    ctx.lineWidth = 5; ctx.strokeStyle = '#000b'; ctx.strokeText(ann.txt, 0, 0); ctx.fillStyle = ann.col; ctx.fillText(ann.txt, 0, 0);
+    ctx.restore();
+  }
+  if (banner && banner.life > 0) {
+    banner.life--;
+    const a = Math.min(1, banner.life / 25);
+    ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.font = `900 ${L.portrait ? 24 : 30}px system-ui,sans-serif`;
+    ctx.lineWidth = 5; ctx.strokeStyle = '#000a'; ctx.strokeText(banner.txt, cx, L.y + L.h * 0.36); ctx.fillStyle = banner.col; ctx.fillText(banner.txt, cx, L.y + L.h * 0.36);
+    ctx.globalAlpha = 1;
+  }
+  if (reconnecting) {
+    ctx.textAlign = 'center'; ctx.font = 'bold 16px system-ui,sans-serif';
+    const ry = L.y + L.h / 2;
+    ctx.fillStyle = 'rgba(0,0,0,.7)'; roundRect(cx - 140, ry - 22, 280, 44, 14); ctx.fill();
+    ctx.fillStyle = '#ffc93c'; ctx.fillText('📡 Reconnexion à la partie…', cx, ry + 6);
+  }
+}
+
+function teamHp(i) { return G.cr.reduce((a, c) => a + (c.team === i && !c.dead ? c.hp : 0), 0); }
+function activePowers() { const g = G; return (isHost ? Object.keys(g.pw).filter(k => g.pw[k]) : (g.pwl || [])).map(k => POWERS[k] && POWERS[k].icon).filter(Boolean); }
+function drawWind(x, y, w, h) {
+  const g = G, cx = x + w / 2;
+  ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(x, y, w, h, 5); ctx.fill();
+  ctx.fillStyle = '#fff8'; ctx.fillRect(cx - 0.5, y + 2, 1, h - 4);
+  const wl = g.wind * (w / 2 - 6) / 1.7 * 1.0;
+  ctx.fillStyle = g.wind < 0 ? '#7fd0ff' : '#ff9d7f';
+  ctx.fillRect(Math.min(cx, cx + wl), y + h / 2 - 3, Math.abs(wl), 6);
+}
+
+function drawHudLandscape(t) {
+  const g = G, top = 10, maxHp = settings.per * 100;
   ctx.textAlign = 'left'; ctx.font = 'bold 11px system-ui,sans-serif';
   g.teams.forEach((tm, i) => {
-    const hp = g.cr.reduce((a, c) => a + (c.team === i && !c.dead ? c.hp : 0), 0);
-    const y = top + i * 16;
+    const hp = teamHp(i), y = top + i * 16;
     ctx.fillStyle = 'rgba(0,0,0,.45)'; roundRect(8, y, 150, 13, 4); ctx.fill();
-    ctx.fillStyle = tm.color; roundRect(8, y, Math.max(0, 150 * hp / maxHp), 13, 4); ctx.fill();
+    ctx.fillStyle = tm.color; roundRect(8, y, Math.max(0, 150 * Math.min(1, hp / maxHp)), 13, 4); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText(tm.name + (tm.away ? ' 💤' : '') + (i === g.tt ? ' ◀' : ''), 13, y + 10.5);
   });
-  // timer + vent
   const cx = VW / 2;
   if (g.tt >= 0 && g.phase !== 'over') {
     const team = g.teams[g.tt];
@@ -1318,49 +1408,71 @@ function drawHud(t) {
     ctx.textAlign = 'center'; ctx.font = 'bold 22px system-ui,sans-serif';
     ctx.fillStyle = (g.phase === 'aim' && g.tm <= 5) ? '#ff5a5a' : team.color;
     ctx.fillText(g.phase === 'settle' ? '…' : g.tm, cx, top + 25);
-    // vent
     const wy = top + 42;
-    ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(cx - 60, wy, 120, 14, 5); ctx.fill();
-    ctx.fillStyle = '#fff8'; ctx.fillRect(cx - 0.5, wy + 2, 1, 10);
-    const wl = g.wind * 55;
-    ctx.fillStyle = g.wind < 0 ? '#7fd0ff' : '#ff9d7f';
-    ctx.fillRect(Math.min(cx, cx + wl), wy + 4, Math.abs(wl), 6);
+    drawWind(cx - 60, wy, 120, 14);
     ctx.font = '9px system-ui,sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('vent', cx, wy + 25);
-    const pl = (isHost ? Object.keys(g.pw).filter(k => g.pw[k]) : (g.pwl || [])).map(k => POWERS[k] && POWERS[k].icon).filter(Boolean);
+    const pl = activePowers();
     if (pl.length) { ctx.font = '16px system-ui,sans-serif'; ctx.fillText(pl.join(' '), cx, wy + 44); }
-    if (!isMyTurn() && g.phase === 'aim') {
-      ctx.font = 'bold 14px system-ui,sans-serif';
-      const msg = 'Tour de ' + team.name + '…';
-      const mw = ctx.measureText(msg).width + 24;
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; roundRect(cx - mw / 2, VH - 44, mw, 28, 14); ctx.fill();
-      ctx.fillStyle = team.color; ctx.fillText(msg, cx, VH - 25);
-    }
   }
-  if (ann && ann.life > 0) {
-    ann.life--;
-    const a = Math.min(1, ann.life / 25), sc = 1 + Math.max(0, (ann.life - 115) / 15) * 0.4;
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, VH * 0.54); ctx.scale(sc, sc);
-    ctx.textAlign = 'center'; ctx.font = '900 22px system-ui,sans-serif';
-    ctx.lineWidth = 5; ctx.strokeStyle = '#000b'; ctx.strokeText(ann.txt, 0, 0); ctx.fillStyle = ann.col; ctx.fillText(ann.txt, 0, 0);
-    ctx.restore();
+}
+
+function drawHudPortrait(t) {
+  const g = G, top = L.hudTop, maxHp = settings.per * 100;
+  // barres d'équipes sur 2 colonnes
+  const colW = Math.floor((VW - 118) / 2);
+  ctx.textAlign = 'left'; ctx.font = 'bold 10px system-ui,sans-serif';
+  g.teams.forEach((tm, i) => {
+    const x = 8 + (i % 2) * (colW + 6), y = top + Math.floor(i / 2) * 14, hp = teamHp(i);
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; roundRect(x, y, colW, 12, 4); ctx.fill();
+    ctx.fillStyle = tm.color; roundRect(x, y, Math.max(0, colW * Math.min(1, hp / maxHp)), 12, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText((i === g.tt ? '▶ ' : '') + tm.name + (tm.away ? ' 💤' : ''), x + 4, y + 9.5);
+  });
+  // chrono + vent à droite
+  if (g.tt >= 0 && g.phase !== 'over') {
+    const team = g.teams[g.tt], bx = VW - 100, bw = 92;
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; roundRect(bx, top, bw, 24, 8); ctx.fill();
+    ctx.textAlign = 'center'; ctx.font = 'bold 18px system-ui,sans-serif';
+    ctx.fillStyle = (g.phase === 'aim' && g.tm <= 5) ? '#ff5a5a' : team.color;
+    ctx.fillText(g.phase === 'settle' ? '…' : g.tm, bx + bw / 2, top + 19);
+    drawWind(bx, top + 28, bw, 11);
+    const pl = activePowers();
+    if (pl.length) { ctx.textAlign = 'left'; ctx.font = '16px system-ui,sans-serif'; ctx.fillText(pl.join(' '), L.x + 8, L.y + 22); }
   }
-  if (banner && banner.life > 0) {
-    banner.life--;
-    const a = Math.min(1, banner.life / 25);
-    ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.font = '900 30px system-ui,sans-serif';
-    ctx.lineWidth = 5; ctx.strokeStyle = '#000a'; ctx.strokeText(banner.txt, cx, VH * 0.38); ctx.fillStyle = banner.col; ctx.fillText(banner.txt, cx, VH * 0.38);
-    ctx.globalAlpha = 1;
+  drawMinimap(t);
+}
+
+function drawMinimap(t) {
+  const g = G, m = L.mini; if (!m) return;
+  const sx = m.w / W, sy = m.h / (H - MINI_Y0);
+  const X = x => m.x + x * sx, Y = y => m.y + (y - MINI_Y0) * sy;
+  ctx.save();
+  roundRect(m.x, m.y, m.w, m.h, 6); ctx.clip();
+  const gr = ctx.createLinearGradient(0, m.y, 0, m.y + m.h); gr.addColorStop(0, '#2a2650'); gr.addColorStop(1, '#a8706a');
+  ctx.fillStyle = gr; ctx.fillRect(m.x, m.y, m.w, m.h);
+  ctx.drawImage(tc, 0, MINI_Y0, W, H - MINI_Y0, m.x, m.y, m.w, m.h);
+  ctx.fillStyle = 'rgba(40,110,200,.85)'; ctx.fillRect(m.x, Y(WATER), m.w, m.h);
+  const crates = isHost ? g.crates : (g.kv || []).map(a => ({ x: a[0], y: a[1] }));
+  ctx.fillStyle = '#ffc93c'; for (const k of crates) ctx.fillRect(X(k.x) - 2, Y(k.y) - 2, 4, 4);
+  const act = g.ac >= 0 ? g.cr[g.ac] : null;
+  for (const c of g.cr) {
+    if (c.dead) continue;
+    const x = X(c.rx ?? c.x), y = Y(c.ry ?? c.y);
+    ctx.fillStyle = g.teams[c.team].color; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+    if (c === act) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 0.012) * 0.5})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, 7); ctx.stroke(); }
   }
-  if (reconnecting) {
-    ctx.textAlign = 'center'; ctx.font = 'bold 16px system-ui,sans-serif';
-    ctx.fillStyle = 'rgba(0,0,0,.7)'; roundRect(cx - 150, VH * 0.5 - 22, 300, 44, 14); ctx.fill();
-    ctx.fillStyle = '#ffc93c'; ctx.fillText('📡 Reconnexion à la partie…', cx, VH * 0.5 + 6);
-  }
-  if (VH > VW * 1.1) {
-    ctx.textAlign = 'center'; ctx.font = 'bold 13px system-ui,sans-serif';
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; roundRect(cx - 130, VH * 0.5 - 14, 260, 26, 13); ctx.fill();
-    ctx.fillStyle = '#ffc93c'; ctx.fillText('🔄 Tourne ton téléphone en paysage', cx, VH * 0.5 + 4);
-  }
+  ctx.fillStyle = '#fff'; for (const p of projView()) { ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 1.8, 0, 7); ctx.fill(); }
+  // cadre de la vue actuelle
+  const hw = L.w / 2 / cam.s, hh = L.h / 2 / cam.s;
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1;
+  ctx.strokeRect(X(cam.x - hw), Y(cam.y - hh), hw * 2 * sx, hh * 2 * sy);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; roundRect(m.x, m.y, m.w, m.h, 6); ctx.stroke();
+}
+function inMini(x, y) { const m = L.mini; return L.portrait && m && G && x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h; }
+function camFromMini(x, y) {
+  const m = L.mini;
+  cam.x = (x - m.x) / (m.w / W); cam.y = (y - m.y) / (m.h / (H - MINI_Y0)) + MINI_Y0;
+  cam.manualUntil = performance.now() + 3500;
 }
 
 /* ================= Boucle ================= */
@@ -1456,7 +1568,7 @@ function goFullscreen() {
   try {
     const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' });
     wantFS = true;
-    const lock = () => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} };
+    const lock = () => {};
     if (p && p.then) p.then(lock).catch(() => {}); else lock();
   } catch (e) {}
 }
@@ -1479,9 +1591,15 @@ document.addEventListener('pointerdown', () => { if (wantFS && !isFS() && G) goF
 
 // Glisser pour regarder la carte
 let drag = null;
-cv.addEventListener('pointerdown', e => { audio(); if (!G) return; drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; $('wmenu').hidden = true; });
+cv.addEventListener('pointerdown', e => {
+  audio(); if (!G) return;
+  $('wmenu').hidden = true;
+  if (inMini(e.clientX, e.clientY)) { drag = { mini: true, id: e.pointerId }; camFromMini(e.clientX, e.clientY); return; }
+  drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
+});
 cv.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id || !G) return;
+  if (drag.mini) { camFromMini(clamp(e.clientX, L.mini.x, L.mini.x + L.mini.w), clamp(e.clientY, L.mini.y, L.mini.y + L.mini.h)); return; }
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.abs(dx) + Math.abs(dy) < 1) return;
   cam.x -= dx / cam.s; cam.y -= dy / cam.s; drag.x = e.clientX; drag.y = e.clientY;

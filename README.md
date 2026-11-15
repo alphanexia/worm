@@ -6,7 +6,7 @@ Jeu d'artillerie au tour par tour sur navigateur. Terrain destructible, vent, 6 
 
 1. Crée un compte sur https://github.com si tu n'en as pas.
 2. Clique sur **New repository** → nomme-le `grubz-arena` → **Public** → **Create repository**.
-3. Clique sur **uploading an existing file**, glisse `index.html` (et ce `README.md`), puis **Commit changes**.
+3. Clique sur **uploading an existing file**, glisse **tous les fichiers** (`index.html`, `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `README.md`), puis **Commit changes**.
 4. Va dans **Settings → Pages** → *Source* : **Deploy from a branch** → branche **main**, dossier **/ (root)** → **Save**.
 5. Attends environ 1 minute. Ton jeu est en ligne à l'adresse :
    `https://TON-PSEUDO.github.io/grubz-arena/`
@@ -30,7 +30,11 @@ Tu peux aussi ajouter des joueurs **sur le même appareil** (bouton « + Ajouter
 | Arme | bouton en haut à droite | 1 à 6 |
 | Voir toute la carte | 🔍, ou glisser le doigt sur l'écran | — |
 
-**Armes :** Bazooka (dévié par le vent) · Grenade (rebondit, explose après 3 s) · Fusil (tir direct) · Grappe (×2, se divise en 5) · Dynamite (×1, énorme explosion, 5 s pour fuir) · Gant (coup de poing qui projette).
+**Armes :** Bazooka (dévié par le vent) · Grenade (rebondit, explose après 3 s) · Fusil (tir direct) · Grappe (se divise en 5) · Dynamite (énorme explosion, 5 s pour fuir) · Gant (coup de poing qui projette) · 🍉 Pastèque (éclate en pépins explosifs) · ☄️ Météores (pluie de 5 météores sur la cible) · 💨 Prout (repousse tout le monde autour… et te propulse) · 🌀 Téléport (téléportation au hasard).
+
+**Caisses surprises 📦 :** elles tombent en parachute. Marche dessus pour obtenir au hasard : ❤️ soin, 🎁 arme bonus, ✌️ double tir, 💪 super explosions, 🌙 gravité lunaire, ⚡ turbo, 🛡️ bouclier… ou 💥 un piège ! Des événements surprises arrivent aussi : tempête, gravité lunaire, pluie de caisses.
+
+**Plein écran :** sur Android, le jeu passe en plein écran tout seul. Sur iPhone, Safari ne le permet pas : touche **Partager ⬆️ → « Sur l'écran d'accueil »**, puis ouvre le jeu depuis l'icône.
 
 Tomber à l'eau élimine directement. La dernière équipe en vie gagne.
 

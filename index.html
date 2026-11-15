@@ -40,24 +40,22 @@ summary{font-weight:700;cursor:pointer}
 .dot{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:0 0 0 2px #0006}
 .code{font-size:56px;letter-spacing:8px;text-align:center;font-weight:900;color:#ffc93c}
 label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
-#hud button{position:relative;width:62px;height:62px;border-radius:50%;padding:0;font-size:24px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.35);box-shadow:0 3px 0 #0005;color:#fff;touch-action:none;backdrop-filter:blur(2px)}
-#hud button.on{background:rgba(255,255,255,.45);transform:translateY(2px)}
-#ctlL{position:fixed;left:calc(14px + env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));display:flex;gap:12px}
-#ctlR{position:fixed;right:calc(14px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:flex-end}
-#ctlR .col{display:flex;flex-direction:column;gap:10px}
-#hud #bFire{width:84px;height:84px;font-size:18px;font-weight:900;background:rgba(255,70,50,.6);border-color:#ffb2a6}
+#hud button{position:fixed;width:56px;height:56px;border-radius:50%;padding:0;font-size:22px;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.32);box-shadow:0 4px 0 #0006,inset 0 2px 0 rgba(255,255,255,.18);color:#fff;touch-action:none}
+#hud button.on{background:rgba(255,255,255,.42);transform:translateY(3px);box-shadow:0 1px 0 #0006}
+#ctlL,#ctlR,#topBtns,#ctlR .col{display:contents}
+#hud #bFire{font-size:19px;font-weight:900;background:radial-gradient(circle at 35% 30%,#ff8a6a,#d6331f 70%);border-color:#ffc2b5;box-shadow:0 5px 0 #7a1a0e,inset 0 2px 0 rgba(255,255,255,.3)}
 #hud #bFire.off{opacity:.35}
-#topBtns{position:fixed;right:calc(10px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));display:flex;gap:8px}
-#hud #topBtns button{width:48px;height:48px;font-size:22px}
-#hud #topBtns #bWeapon{width:auto;min-width:48px;border-radius:24px;padding:0 12px;font-size:15px}
-#wmenu{position:fixed;right:calc(10px + env(safe-area-inset-right));top:calc(66px + env(safe-area-inset-top));display:grid;grid-template-columns:repeat(4,auto);gap:6px;background:rgba(14,16,34,.88);padding:10px;border-radius:16px}
-#hud #wmenu button{width:min(84px,21vw);height:56px;border-radius:12px;font-size:21px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
-#hud #wmenu button small{font-size:11px;font-weight:700}
+#hud #bJump{background:rgba(120,220,140,.22);border-color:rgba(160,255,180,.5)}
+#hud #bWeapon{border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;background:rgba(255,201,60,.18);border-color:rgba(255,220,120,.55)}
+#hud #bWeapon small{font-size:10px;font-weight:800;margin-top:3px;white-space:nowrap}
+#hud #bFull{font-size:16px;opacity:.75}
+#wmenu{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(14,16,34,.94);padding:10px;border-radius:18px;box-shadow:0 10px 30px #0008}
+#hud #wmenu button{position:relative;width:auto;height:58px;border-radius:12px;font-size:21px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+#hud #wmenu button small{font-size:10.5px;font-weight:700}
 #hud #wmenu button.sel{background:rgba(255,201,60,.45)}
-#hud button{width:56px;height:56px;font-size:22px}
-#hud #bFire{width:76px;height:76px;font-size:17px}
-#ctlL,#ctlR{gap:10px}
-#ctlR .col{gap:8px}
+.logo{display:block;margin:0 auto}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+.logo.anim{animation:bob 2.4s ease-in-out infinite}
 </style>
 </head>
 <body>
@@ -65,8 +63,9 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 <div id="sa" style="position:fixed;left:0;top:0;width:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);pointer-events:none"></div>
 
 <div id="menu" class="screen"><div class="panel">
+  <svg class="logo anim" width="130" height="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h1>DINO<span>BOUM</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v7</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v8</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -86,6 +85,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 </div></div>
 
 <div id="lobby" class="screen" hidden><div class="panel">
+  <svg class="logo" width="70" height="64" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h2>Salon</h2>
   <div id="shareBox">
     <div class="sub">Code de la partie</div>
@@ -107,9 +107,9 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 </div></div>
 
 <div id="hud" hidden>
-  <div id="ctlL"><button data-k="l">◀</button><button data-k="r">▶</button></div>
+  <div id="ctlL"><button id="bL" data-k="l">◀</button><button id="bR" data-k="r">▶</button></div>
   <div id="ctlR">
-    <div class="col"><button data-k="u">▲</button><button data-k="d">▼</button></div>
+    <div class="col"><button id="bU" data-k="u">▲</button><button id="bD" data-k="d">▼</button></div>
     <button id="bJump">⤴</button>
     <button id="bFire" data-k="f">FEU</button>
   </div>
@@ -118,6 +118,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 </div>
 
 <div id="fsHelp" class="screen" hidden style="z-index:20"><div class="panel">
+  <svg class="logo" width="60" height="55" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h2>📲 Plein écran sur iPhone</h2>
   <p class="sub" style="line-height:1.6;font-size:16px">Safari ne permet pas le plein écran pour les sites. L'astuce : installer le jeu comme une appli.<br><br>
   1. Touche le bouton <b>Partager</b> <span style="font-size:22px">⬆️</span> de Safari<br>
@@ -128,6 +129,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 </div></div>
 
 <div id="over" class="screen" hidden><div class="panel">
+  <svg class="logo anim" width="110" height="100" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h1 id="overTxt" style="font-size:36px"></h1>
   <button id="btnAgain" class="big">Rejouer</button>
   <p id="overWait" class="sub" hidden>En attente de l'hôte…</p>
@@ -225,25 +227,50 @@ function buildTerrain(spec) {
   const img = tctx.createImageData(W, H), d = img.data;
   for (let x = 0; x < W; x++) {
     let depth = 0;
-    const wob = Math.floor(Math.sin(x * 0.02) * 8);
+    const wob = Math.floor(Math.sin(x * 0.02) * 8 + Math.sin(x * 0.007) * 5);
+    const grassH = 5 + Math.floor(hash(x, 7) * 3) + (hash(x >> 1, 9) > 0.85 ? 2 : 0);
     for (let y = 0; y < H; y++) {
       const i = y * W + x;
       if (!mask[i]) { depth = 0; continue; }
       depth++;
       let R, G, B;
       const n = hash(x, y);
-      if (depth <= 5) { R = 96 + n * 20; G = 205 + n * 20; B = 70; }
-      else if (depth <= 9) { R = 62; G = 150 + n * 15; B = 52; }
+      if (depth <= grassH) {
+        const k = depth / grassH;
+        R = 70 + (1 - k) * 60 + n * 18; G = 175 + (1 - k) * 55 + n * 18; B = 55 + (1 - k) * 20;
+        if (depth === 1) { R += 25; G += 20; B += 20; }
+      } else if (depth <= grassH + 3) { R = 70; G = 110 + n * 10; B = 40; }
       else {
-        const dd = y / H, k = n * 26;
-        R = 158 - dd * 50 + k; G = 104 - dd * 36 + k * 0.7; B = 62 - dd * 22 + k * 0.4;
-        if (((y + wob) % 46 + 46) % 46 < 3) { R -= 28; G -= 22; B -= 14; }
-        if (hash(x >> 3, y >> 3) > 0.93) { R += 30; G += 26; B += 22; }
+        const dd = y / H, k = n * 22, light = Math.max(0, 1 - (depth - grassH) / 40) * 22;
+        R = 150 - dd * 55 + k + light; G = 98 - dd * 40 + k * 0.7 + light * 0.7; B = 60 - dd * 25 + k * 0.4 + light * 0.4;
+        const band = ((y + wob) % 52 + 52) % 52;
+        if (band < 3) { R -= 26; G -= 20; B -= 12; } else if (band < 5) { R += 10; G += 8; B += 5; }
+        const pb = hash(x >> 2, y >> 2);
+        if (pb > 0.965) { const g2 = 120 + n * 40; R = g2; G = g2 * 0.92; B = g2 * 0.85; }       // cailloux
       }
       const p = i * 4; d[p] = R; d[p + 1] = G; d[p + 2] = B; d[p + 3] = 255;
     }
   }
   tctx.putImageData(img, 0, 0);
+  // fossiles de dinos enfouis 🦴
+  const fr = mulberry(spec.seed + 99);
+  tctx.save(); tctx.globalCompositeOperation = 'source-atop';
+  for (let i = 0; i < 14; i++) {
+    const fx = 60 + fr() * (W - 120), fy0 = spec.h[Math.floor(fx)] + 40 + fr() * 260;
+    if (fy0 > H - 40) continue;
+    tctx.save(); tctx.translate(fx, fy0); tctx.rotate(fr() * 6.28); tctx.globalAlpha = 0.55;
+    tctx.fillStyle = '#e8dcc0'; tctx.strokeStyle = '#8a7a5a'; tctx.lineWidth = 1;
+    if (fr() < 0.5) { // os
+      tctx.fillRect(-9, -1.6, 18, 3.2);
+      for (const sx of [-9, 9]) for (const sy of [-2, 2]) { tctx.beginPath(); tctx.arc(sx, sy, 2.4, 0, 7); tctx.fill(); }
+    } else {           // petit crâne
+      tctx.beginPath(); tctx.ellipse(0, 0, 9, 6, 0, 0, 7); tctx.fill(); tctx.stroke();
+      tctx.fillStyle = '#6a5a40'; tctx.beginPath(); tctx.arc(-3, -1, 1.8, 0, 7); tctx.fill();
+      tctx.fillStyle = '#e8dcc0'; for (let k2 = 0; k2 < 4; k2++) tctx.fillRect(1 + k2 * 2, 3, 1.2, 3);
+    }
+    tctx.restore();
+  }
+  tctx.restore();
 }
 
 function carveMask(cx, cy, r) {
@@ -589,7 +616,7 @@ function punch(c) {
   for (const o of G.cr) {
     if (o.dead || o === c) continue;
     const dx = o.x - c.x;
-    if (dx * c.face > -2 && Math.abs(dx) < CR * 2 + 14 && Math.abs(o.y - c.y) < 24) {
+    if (dx * c.face > -2 && Math.abs(dx) < CR * 2 + 16 && Math.abs(o.y - c.y) < 24) {
       damage(o, 30); o.vx = c.face * 5.5; o.vy = -6.5; o.air = true;
       G.texts.push([Math.round(o.x), Math.round(o.y - 36), 'POW !', '#fff']);
     }
@@ -597,7 +624,7 @@ function punch(c) {
 }
 
 function fart(c) {
-  G.fxe.push(['fart', Math.round(c.x), Math.round(c.y)]);
+  G.fxe.push(['fart', Math.round(c.x - c.face * 10), Math.round(c.y + 3)]);
   for (const o of G.cr) {
     if (o.dead || o === c) continue;
     const dx = o.x - c.x, dy = o.y - c.y, d = Math.hypot(dx, dy);
@@ -1065,7 +1092,9 @@ function updCtl() {
   }
   const w = WEAPONS[G.weapon] || WEAPONS[0];
   const lbl = w.icon + ' ' + w.name;
-  if (lbl !== lastWeaponIcon) { lastWeaponIcon = lbl; $('bWeapon').textContent = lbl; }
+  const am = getAmmo(), n = am ? am[G.weapon] : -1;
+  const lbl2 = lbl + n;
+  if (lbl2 !== lastWeaponIcon) { lastWeaponIcon = lbl2; $('bWeapon').innerHTML = `<span style="font-size:${Math.round(24 * L.k)}px">${w.icon}</span><small>${n < 0 ? '∞' : '×' + n}</small>`; }
 }
 
 function openWmenu() {
@@ -1152,23 +1181,44 @@ function computeLayout() {
   L.portrait = true;
   const colW = Math.min(VW, Math.round(VH * 0.62)), colX = Math.round((VW - colW) / 2);
   L.col = { x: colX, w: colW };
+  const k = Math.max(0.78, Math.min(1.15, colW / 390));   // échelle des boutons
+  L.k = k;
+  const panelH = Math.round((64 + 10 + 58 + 22) * k) + 12 + SAB;  // hauteur de la zone des commandes
+  L.panelH = panelH;
   const top = SAT + 6;
-  const mw = colW - 12, mh = Math.round(mw * 9 / 16);      // vue de loin en 16/9
+  const mw = colW - 12, mh = Math.round(mw * 9 / 16);
   const sc = mw / W;
   L.mini = { x: colX + 6, y: top, w: mw, h: mh, sc, y0: H + 6 - mh / sc };
   const vy = top + mh + 6;
-  L.x = colX; L.y = vy; L.w = colW; L.h = Math.max(120, VH - vy - (226 + SAB)); L.hudTop = top;
+  L.x = colX; L.y = vy; L.w = colW; L.h = Math.max(120, VH - vy - panelH); L.hudTop = top;
   applyDomLayout();
 }
+// Placement selon la zone du pouce : pouce gauche = se déplacer / sauter, pouce droit = viser / tirer, arme au centre
+function placeBtn(id, x, bottom, w, h) {
+  const b = $(id); if (!b) return;
+  b.style.left = Math.round(x) + 'px'; b.style.bottom = Math.round(bottom) + 'px';
+  b.style.width = Math.round(w) + 'px'; b.style.height = Math.round(h || w) + 'px';
+}
 function applyDomLayout() {
-  const key = [VW, VH, L.x, L.y, L.h, L.w].join(':');
+  const key = [VW, VH, L.x, L.w, L.h, SAB].join(':');
   if (key === domKey) return; domKey = key;
-  const right = (VW - (L.col.x + L.col.w)) + 'px';
-  const tb = $('topBtns'), wm = $('wmenu');
-  tb.style.top = (L.y + L.h + 8) + 'px'; tb.style.right = 'calc(10px + ' + right + ')';
-  wm.style.top = (L.y + 6) + 'px'; wm.style.right = 'calc(6px + ' + right + ')';
-  $('ctlL').style.left = 'calc(12px + ' + L.col.x + 'px)';
-  $('ctlR').style.right = 'calc(12px + ' + right + ')';
+  const k = L.k, x0 = L.col.x, cw = L.col.w, b = 12 + SAB, m = 12 * k;
+  const M = 64 * k, J = 58 * k, A = 54 * k, F = 86 * k, WB = 62 * k, gap = 10 * k;
+  // gauche
+  placeBtn('bL', x0 + m, b, M);
+  placeBtn('bR', x0 + m + M + gap, b, M);
+  placeBtn('bJump', x0 + m + M + gap / 2 - J / 2, b + M + gap, J);
+  // droite
+  placeBtn('bFire', x0 + cw - m - F, b, F);
+  placeBtn('bD', x0 + cw - m - F - gap - A, b, A);
+  placeBtn('bU', x0 + cw - m - F - gap - A, b + A + gap, A);
+  // centre
+  const cx = x0 + cw / 2;
+  placeBtn('bWeapon', cx - WB / 2, b + 6 * k, WB, WB * 0.92);
+  placeBtn('bFull', cx - 18 * k, b + WB + 14 * k, 36 * k);
+  const wm = $('wmenu');
+  wm.style.left = (x0 + 8) + 'px'; wm.style.right = (VW - x0 - cw + 8) + 'px';
+  wm.style.top = ''; wm.style.bottom = (L.panelH + 4) + 'px';
 }
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight;
@@ -1183,11 +1233,31 @@ function projView() {
   return G.proj.filter(p => !(p.delay > 0)).map(p => ({ type: p.type, x: p.x, y: p.y, ang: Math.atan2(p.vy, p.vx), fs: p.fuse !== undefined ? Math.max(0, Math.ceil(p.fuse / 60)) : 0 }));
 }
 
+const STARS = Array.from({ length: 70 }, (_, i) => [hash(i, 1), hash(i, 2) * 0.55, hash(i, 3)]);
 function drawSky(t) {
   const VW = (G && tc && L.portrait) ? L.w : innerWidth, VH = (G && tc && L.portrait) ? L.h : innerHeight;
   const gr = ctx.createLinearGradient(0, 0, 0, VH);
-  gr.addColorStop(0, '#1b1f3a'); gr.addColorStop(0.55, '#5a4a8a'); gr.addColorStop(1, '#f0946c');
+  gr.addColorStop(0, '#141834'); gr.addColorStop(0.5, '#4b3f80'); gr.addColorStop(0.85, '#c9708a'); gr.addColorStop(1, '#f7a46c');
   ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
+  const px = G ? (cam.x * cam.s * 0.05) : t * 0.004;
+  for (const [sx, sy, b] of STARS) {
+    const a = 0.35 + 0.5 * Math.abs(Math.sin(t * 0.0015 + b * 20));
+    ctx.fillStyle = `rgba(255,255,240,${a})`;
+    const x = ((sx * VW * 1.3 - px) % VW + VW) % VW;
+    ctx.fillRect(x, sy * VH, b > 0.8 ? 2 : 1.2, b > 0.8 ? 2 : 1.2);
+  }
+  // lune
+  const mx = VW * 0.8 - px * 0.5 % VW, my = VH * 0.16;
+  const mg = ctx.createRadialGradient(mx, my, 4, mx, my, 50); mg.addColorStop(0, 'rgba(255,240,200,.35)'); mg.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, 50, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff3d6'; ctx.beginPath(); ctx.arc(mx, my, 14, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(200,180,150,.5)'; ctx.beginPath(); ctx.arc(mx - 4, my - 3, 3, 0, 7); ctx.arc(mx + 5, my + 4, 2, 0, 7); ctx.fill();
+  // nuages
+  ctx.fillStyle = 'rgba(255,220,230,.10)';
+  for (let i = 0; i < 4; i++) {
+    const cxl = ((i * 0.31 * VW * 1.6 + t * 0.006 * (i + 1) - px * 2) % (VW + 200) + VW + 200) % (VW + 200) - 100, cyl = VH * (0.2 + i * 0.09);
+    ctx.beginPath(); ctx.ellipse(cxl, cyl, 60, 12, 0, 0, 7); ctx.ellipse(cxl + 30, cyl - 8, 34, 12, 0, 0, 7); ctx.ellipse(cxl - 28, cyl - 4, 28, 9, 0, 0, 7); ctx.fill();
+  }
   const off = G ? cam.x * cam.s : t * 0.02;
   const layers = [[0.15, '#3b3466', 0.62, 50], [0.3, '#2c2850', 0.74, 35]];
   for (const [par, col, hy, amp] of layers) {
@@ -1197,6 +1267,19 @@ function drawSky(t) {
   }
 }
 
+const MENU_DINOS = [0, 1, 2, 3, 0, 2].map((kind, i) => ({ kind, team: i, spd: 0.25 + hash(i, 5) * 0.3, off: hash(i, 6) * 2000 }));
+function drawMenuDinos(t) {
+  const gy = innerHeight - 26;
+  ctx.fillStyle = '#2c6b34'; ctx.fillRect(0, gy + 8, innerWidth, 40);
+  ctx.fillStyle = '#5fc45a'; ctx.fillRect(0, gy + 6, innerWidth, 4);
+  for (const d of MENU_DINOS) {
+    const span = innerWidth + 80, x = ((d.off + t * 0.03 * d.spd * (d.team % 2 ? -1 : 1)) % span + span) % span - 40;
+    const fake = { rx: x, ry: gy - 2 + Math.abs(Math.sin(t * 0.006 * (1 + d.spd))) * -3, face: d.team % 2 ? -1 : 1, aim: -0.2, kind: d.kind, air: false };
+    ctx.save(); ctx.translate(x, gy); ctx.scale(1.6, 1.6); ctx.translate(-x, -gy);
+    drawDino(fake, COLORS[d.team], true, t + d.off);
+    ctx.restore();
+  }
+}
 function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
 function shade(hex, k) {
@@ -1246,6 +1329,7 @@ function poly(pts, fill) {
 }
 function drawDino(c, col, active, t) {
   const dark = shade(col, 0.6), light = shade(col, 1.35);
+  if (!c.air) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(c.rx, c.ry + CR, 9, 2.2, 0, 0, 7); ctx.fill(); }
   const step = active && !c.air ? Math.sin(t * 0.02) : 0;
   const bob = active ? Math.sin(t * 0.008) * 0.6 : 0;
   const ax = Math.cos(c.aim), ay = Math.sin(c.aim);
@@ -1259,6 +1343,7 @@ function drawDino(c, col, active, t) {
     poly([-4, -1, -16, 3, -4, 5], col);
     blob(-0.5, 1.5, 7, 6.5, col);
     blob(0, 4, 4.5, 3, light);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.ellipse(-2, -2, 3, 1.6, -0.5, 0, 7); ctx.fill();
     blob(5, -5.5, 6.5, 4.8, col);
     ctx.strokeStyle = dark; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(5, -3); ctx.lineTo(11, -3.5); ctx.stroke();
     ctx.fillStyle = '#fff'; for (const tx of [7, 9]) { ctx.beginPath(); ctx.moveTo(tx, -3.3); ctx.lineTo(tx + 0.8, -1.9); ctx.lineTo(tx + 1.6, -3.4); ctx.fill(); }
@@ -1294,6 +1379,29 @@ function drawDino(c, col, active, t) {
   ctx.restore();
 }
 
+// Arme dessinée dans la direction du dino (miroir + rotation selon la visée)
+function drawHeld(c, id, t) {
+  ctx.save(); ctx.translate(c.rx, c.ry); ctx.scale(c.face, 1); ctx.rotate(c.aim);
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.6)';
+  const R = (x, y, w, h, f) => { ctx.fillStyle = f; ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); };
+  const O = (x, y, rx, ry, f) => { ctx.fillStyle = f; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); ctx.stroke(); };
+  switch (id) {
+    case 'bazooka': R(1, -2.4, 15, 4.8, '#5a6a50'); R(14, -2.9, 3, 5.8, '#3a4636'); ctx.fillStyle = '#e33'; ctx.fillRect(16.5, -1.6, 1.6, 3.2); break;
+    case 'grenade': O(11, 0, 3.6, 3.6, '#2b2f2a'); ctx.strokeStyle = '#c96'; ctx.beginPath(); ctx.moveTo(11, -3.6); ctx.lineTo(12.5, -6); ctx.stroke(); break;
+    case 'cluster': O(11, 0, 3.8, 3.8, '#b3262f'); break;
+    case 'shotgun': R(2, -1.2, 6, 3.2, '#7a4d1c'); R(7, -1.6, 11, 2.2, '#333'); break;
+    case 'dynamite': R(8, -5, 3.5, 9, '#d22'); ctx.fillStyle = (t >> 6) % 2 ? '#ffdd33' : '#ff8833'; ctx.beginPath(); ctx.arc(10, -6.5, 1.4, 0, 7); ctx.fill(); break;
+    case 'melon': O(12, 0, 5, 4, '#2f9e3a'); break;
+    case 'meteor': R(7, -2.5, 6, 5, '#444'); ctx.fillStyle = '#ff4433'; ctx.beginPath(); ctx.arc(10, -3.5, 1.4, 0, 7); ctx.fill(); break;
+    case 'egg': O(12, 0, 3.4, 4.4, '#fff8e8'); break;
+    case 'teleport': ctx.strokeStyle = '#b98aff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(12, 0, 3.5, t * 0.01, t * 0.01 + 4.5); ctx.stroke(); break;
+    case 'rope': ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(14, 0); ctx.arc(14, 2.5, 2.5, -Math.PI / 2, Math.PI / 2, true); ctx.stroke(); break;
+    case 'fart': ctx.restore(); ctx.save(); ctx.translate(c.rx - c.face * 12, c.ry + 2); ctx.fillStyle = 'rgba(150,210,80,.5)'; ctx.beginPath(); ctx.arc(0, 0, 3 + Math.sin(t * 0.01), 0, 7); ctx.fill(); break;
+    case 'punch': ctx.restore(); ctx.save(); ctx.translate(c.rx, c.ry); ctx.scale(c.face, 1); ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 2, 14, 0.2, 1.1); ctx.stroke(); break;
+  }
+  ctx.restore();
+}
+
 function drawAim(c, team, t) {
   const x = c.rx, y = c.ry, ax = Math.cos(c.aim) * c.face, ay = Math.sin(c.aim);
   const w = WEAPONS[G.weapon] || WEAPONS[0];
@@ -1304,8 +1412,7 @@ function drawAim(c, team, t) {
     ctx.strokeStyle = '#0008'; ctx.lineWidth = 1; ctx.stroke();
   }
   if (G.phase !== 'aim' || c.rope) return;
-  ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(w.icon, x + ax * 13, y + ay * 13 + 2); ctx.textBaseline = 'alphabetic';
+  drawHeld(c, w.id, t);
   if (w.id === 'meteor') {
     const tx = x + c.face * (60 + G.charge * 600), sy = findSurface(tx);
     const gy = sy > 0 ? sy : WATER;
@@ -1389,10 +1496,18 @@ function drawCrate(k, t) {
   ctx.lineWidth = 2.5; ctx.strokeStyle = '#7a4d1c'; ctx.strokeText('?', x, y + 4 + b); ctx.fillText('?', x, y + 4 + b);
 }
 function drawWater(t, front) {
-  ctx.fillStyle = front ? 'rgba(46,120,210,.78)' : 'rgba(30,80,170,.9)';
+  if (front) { const wg = ctx.createLinearGradient(0, WATER, 0, H + 60); wg.addColorStop(0, 'rgba(70,160,235,.82)'); wg.addColorStop(1, 'rgba(20,50,130,.95)'); ctx.fillStyle = wg; }
+  else ctx.fillStyle = 'rgba(30,80,170,.9)';
   ctx.beginPath(); ctx.moveTo(-2000, H + 600);
   for (let x = -2000; x <= W + 2000; x += 16) ctx.lineTo(x, WATER + (front ? 4 : 0) + Math.sin(x * 0.03 + t * (front ? 0.004 : -0.003)) * 3);
   ctx.lineTo(W + 2000, H + 600); ctx.closePath(); ctx.fill();
+  if (front) {
+    ctx.strokeStyle = 'rgba(220,245,255,.55)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = -2000; x <= W + 2000; x += 16) { const yy = WATER + 4 + Math.sin(x * 0.03 + t * 0.004) * 3; x === -2000 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    for (let i = 0; i < 40; i++) { const x = (i * 97 + t * 0.02 * (i % 3 + 1)) % (W + 400) - 200; ctx.fillRect(x, WATER + 14 + (i % 5) * 7, 10 + (i % 4) * 4, 1.2); }
+  }
 }
 
 function updCam(dt) {
@@ -1422,7 +1537,7 @@ function render(t, dt) {
   }
   drawSky(t);
   if (pm) ctx.restore();
-  if (!G || !tc) return;
+  if (!G || !tc) { drawMenuDinos(t); return; }
   ctx.save();
   if (pm) { ctx.beginPath(); ctx.rect(L.x, L.y, L.w, L.h); ctx.clip(); }
   const g = G, s = cam.s;
@@ -1460,6 +1575,7 @@ function render(t, dt) {
       const k = f.life / f.max;
       ctx.fillStyle = `rgba(255,${180 + 60 * k | 0},80,${k * 0.9})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.3 - k * 0.5), 0, 7); ctx.fill();
       ctx.fillStyle = `rgba(255,255,220,${k})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 0.5 * k, 0, 7); ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${k * 0.6})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (2 - k), 0, 7); ctx.stroke();
     } else if (f.k === 'deb') {
       f.vy += 0.2; f.x += f.vx; f.y += f.vy; ctx.fillStyle = f.col; ctx.fillRect(f.x - f.r / 2, f.y - f.r / 2, f.r, f.r);
     }

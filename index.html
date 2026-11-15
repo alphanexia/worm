@@ -65,7 +65,7 @@ label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:4px}
 <div id="menu" class="screen"><div class="panel">
   <svg class="logo anim" width="130" height="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-label="Dino Boum"><g stroke="#0d3a1e" stroke-width="3" stroke-linejoin="round"><path d="M86 18 l6 -14 l4 14 l13 -6 l-6 13 l14 4 l-14 6 l6 12 l-13 -5 l-4 13 l-6 -13 l-12 6 l5 -13 l-13 -5 l13 -5 z" fill="#ffc93c" stroke="#a06a10"/><path d="M30 62 L4 76 L32 80 Z" fill="#3ecf6a"/><rect x="36" y="80" width="10" height="20" rx="4" fill="#249a4c"/><rect x="58" y="80" width="10" height="20" rx="4" fill="#249a4c"/><ellipse cx="50" cy="66" rx="24" ry="22" fill="#3ecf6a"/><ellipse cx="52" cy="74" rx="14" ry="10" fill="#a8f0b8" stroke="none"/><ellipse cx="68" cy="40" rx="24" ry="17" fill="#3ecf6a"/><path d="M62 70 l9 4" stroke-linecap="round" stroke-width="5"/></g><path d="M58 47 Q74 52 90 46" fill="none" stroke="#0d3a1e" stroke-width="2.5" stroke-linecap="round"/><path d="M66 48 l3 5 l3 -5 M76 49 l3 5 l3 -5" fill="#fff" stroke="#0d3a1e" stroke-width="1"/><circle cx="72" cy="33" r="7.5" fill="#fff" stroke="#0d3a1e" stroke-width="2.5"/><circle cx="74.5" cy="33" r="4" fill="#111"/><circle cx="73" cy="31.5" r="1.4" fill="#fff"/><ellipse cx="46" cy="58" rx="7" ry="4" fill="#fff" opacity=".3" transform="rotate(-25 46 58)"/></svg>
   <h1>DINO<span>BOUM</span></h1>
-  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v9</small></p>
+  <p class="sub">Artillerie explosive au tour par tour · 2 à 6 joueurs <small style="opacity:.6">· v10</small></p>
   <input id="name" maxlength="12" placeholder="Ton pseudo" autocomplete="off">
   <div id="joinBox" hidden>
     <p class="sub">Tu es invité dans la partie <b id="joinCode"></b></p>
@@ -204,33 +204,84 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ================= Terrain ================= */
 let mask = null, tc = null, tctx = null;
 
+/* ---------- Génération de cartes : 6 styles très différents + tunnels, grottes, plateformes ---------- */
+const MAP_NAMES = { collines: '⛰️ Collines', archipel: '🏝️ Archipel', cavernes: '🕳️ Cavernes', iles: '☁️ Îles flottantes', canyon: '🏜️ Canyon', gruyere: '🧀 Gruyère' };
 function genSpec(seed) {
-  const r = mulberry(seed), h = new Array(W);
-  const waves = [];
-  for (let i = 0; i < 5; i++) waves.push({ a: (r() * 60 + 25) / (i + 1), f: (r() * 0.004 + 0.002) * (i + 1) * 1.3, p: r() * 7 });
-  const base = H * 0.5 + r() * 80;
-  const gaps = [], ng = 1 + Math.floor(r() * 2);
-  for (let i = 0; i < ng; i++) gaps.push({ x: 450 + r() * (W - 900), w: 35 + r() * 50 });
+  const r = mulberry(seed);
+  const styles = Object.keys(MAP_NAMES);
+  const style = styles[Math.floor(r() * styles.length)];
+  const lat = []; for (let i = 0; i < 128; i++) lat.push(r());
+  const vn = (x, sc) => { const q = x / sc, i = Math.floor(q), f = q - i, u = f * f * (3 - 2 * f); return lat[i & 127] * (1 - u) + lat[(i + 1) & 127] * u; };
+  const fbm = x => (vn(x, 420) + vn(x + 999, 170) * 0.5 + vn(x + 3333, 70) * 0.25 + vn(x + 7777, 26) * 0.12) / 1.87;
+  const h = new Array(W), holes = [], adds = [], rects = [];
+  const edge = x => { const e = Math.min(x, W - 1 - x); return e < 110 ? (110 - e) * (110 - e) / 28 : 0; };
+  const rnd = (a, b) => a + r() * (b - a);
+  // ver qui creuse un tunnel sinueux
+  const worm = (x, y, steps, rad) => {
+    let a = r() * 6.28;
+    for (let i = 0; i < steps; i++) {
+      a += (r() - 0.5) * 0.7; x += Math.cos(a) * 11; y += Math.sin(a) * 7;
+      if (y < 120 || y > WATER - 60) a = -a;
+      x = clamp(x, 60, W - 60); y = clamp(y, 100, WATER - 50);
+      holes.push([Math.round(x), Math.round(y), Math.round(rad + (r() - 0.5) * 8)]);
+    }
+  };
   for (let x = 0; x < W; x++) {
-    let y = base;
-    for (const w of waves) y += Math.sin(x * w.f + w.p) * w.a;
-    const e = Math.min(x, W - 1 - x);
-    if (e < 120) y += (120 - e) * (120 - e) / 40;
-    for (const g of gaps) { const d = Math.abs(x - g.x); if (d < g.w) y += (g.w - d) * (g.w - d) / (g.w * 0.25); }
-    h[x] = Math.round(clamp(y, H * 0.2, H + 10));
+    let y;
+    switch (style) {
+      case 'collines': y = H * 0.28 + fbm(x) * H * 0.42; break;
+      case 'archipel': { const isl = vn(x + 500, 230); y = H * 1.02 - Math.max(0, isl - 0.38) * H * 1.5 + vn(x + 50, 30) * 40; break; }
+      case 'cavernes': y = H * 0.1 + fbm(x) * H * 0.14; break;
+      case 'iles': y = H * 0.84 + vn(x, 110) * H * 0.16; break;
+      case 'canyon': { const m = vn(x + 222, 85); y = m < 0.4 ? H * 0.95 : H * 0.22 + fbm(x) * H * 0.25 + (m < 0.5 ? (0.5 - m) * H * 3 : 0); break; }
+      default: y = H * 0.2 + fbm(x) * H * 0.2; // gruyère
+    }
+    h[x] = Math.round(clamp(y + edge(x), H * 0.07, H + 10));
   }
-  const holes = [], nh = 4 + Math.floor(r() * 5);
-  for (let i = 0; i < nh; i++) {
-    const x = 150 + r() * (W - 300), y = h[Math.floor(x)] + 60 + r() * 200;
-    if (y < WATER - 40) holes.push([Math.round(x), Math.round(y), Math.round(25 + r() * 40)]);
+  if (style === 'collines') {
+    for (let i = 0; i < 5; i++) { const x = rnd(150, W - 150); adds.push([Math.round(x), Math.round(h[Math.floor(x)] - rnd(20, 60)), Math.round(rnd(40, 90)), Math.round(rnd(12, 22))]); } // surplombs
+    for (let i = 0; i < 3; i++) worm(rnd(200, W - 200), rnd(H * 0.5, H * 0.8), 18 + Math.floor(r() * 20), 16);
+  } else if (style === 'archipel') {
+    for (let i = 0; i < 6; i++) adds.push([Math.round(rnd(150, W - 150)), Math.round(rnd(H * 0.3, H * 0.6)), Math.round(rnd(35, 80)), Math.round(rnd(10, 20))]);
+    for (let i = 0; i < 2; i++) worm(rnd(200, W - 200), rnd(H * 0.6, H * 0.85), 15, 15);
+  } else if (style === 'cavernes') {
+    for (let i = 0; i < 7; i++) worm(rnd(150, W - 150), rnd(H * 0.35, H * 0.85), 30 + Math.floor(r() * 30), rnd(22, 34));
+    for (let i = 0; i < 9; i++) holes.push([Math.round(rnd(120, W - 120)), Math.round(rnd(H * 0.35, H * 0.85)), Math.round(rnd(45, 85))]);
+    for (let i = 0; i < 4; i++) { const x = rnd(150, W - 150); for (let y = h[Math.floor(x)] - 10; y < H * 0.55; y += 12) holes.push([Math.round(x + Math.sin(y * 0.05) * 10), Math.round(y), 20]); } // puits
+  } else if (style === 'iles') {
+    const n = 9 + Math.floor(r() * 5);
+    for (let i = 0; i < n; i++) {
+      const x = 100 + (i + r() * 0.6) * (W - 200) / n, y = rnd(H * 0.25, H * 0.68), rx = rnd(50, 120), ry = rnd(18, 34);
+      adds.push([Math.round(x), Math.round(y), Math.round(rx), Math.round(ry)]);
+      adds.push([Math.round(x + rnd(-20, 20)), Math.round(y + ry * 0.8), Math.round(rx * 0.55), Math.round(ry * 1.2)]); // dessous en pointe
+    }
+  } else if (style === 'canyon') {
+    for (let i = 0; i < 4; i++) { const x = rnd(200, W - 300), y = rnd(H * 0.3, H * 0.6); rects.push([Math.round(x), Math.round(y), Math.round(rnd(110, 220)), 10]); } // ponts
+    for (let i = 0; i < 5; i++) { const x = rnd(150, W - 150), w = rnd(18, 36); rects.push([Math.round(x), Math.round(rnd(H * 0.35, H * 0.6)), Math.round(w), H]); } // piliers
+    for (let i = 0; i < 2; i++) worm(rnd(200, W - 200), rnd(H * 0.5, H * 0.8), 20, 15);
+  } else { // gruyère
+    for (let i = 0; i < 38; i++) holes.push([Math.round(rnd(80, W - 80)), Math.round(rnd(H * 0.28, H * 0.92)), Math.round(rnd(18, 60))]);
+    for (let i = 0; i < 4; i++) worm(rnd(150, W - 150), rnd(H * 0.4, H * 0.8), 22, 14);
   }
-  return { h, holes, seed };
+  // quelques trous en plus partout
+  for (let i = 0, nh = 3 + Math.floor(r() * 5); i < nh; i++) {
+    const x = rnd(150, W - 150), y = h[Math.floor(x)] + rnd(50, 260);
+    if (y < WATER - 40) holes.push([Math.round(x), Math.round(y), Math.round(rnd(20, 50))]);
+  }
+  return { h, holes, adds, rects, seed, style };
 }
 
 function buildTerrain(spec) {
   mask = new Uint8Array(W * H);
   const h = spec.h;
   for (let x = 0; x < W; x++) for (let y = Math.max(0, h[x]); y < H; y++) mask[y * W + x] = 1;
+  for (const [ax, ay, rx, ry] of spec.adds || []) {
+    for (let y = Math.max(0, ay - ry); y <= Math.min(H - 1, ay + ry); y++) {
+      const dy = (y - ay) / ry, hw = rx * Math.sqrt(Math.max(0, 1 - dy * dy));
+      for (let x = Math.max(0, Math.round(ax - hw)); x <= Math.min(W - 1, Math.round(ax + hw)); x++) mask[y * W + x] = 1;
+    }
+  }
+  for (const [rx0, ry0, rw, rh] of spec.rects || []) for (let y = Math.max(0, ry0); y < Math.min(H, ry0 + rh); y++) for (let x = Math.max(0, rx0); x < Math.min(W, rx0 + rw); x++) mask[y * W + x] = 1;
   for (const [hx, hy, hr] of spec.holes) carveMask(hx, hy, hr);
   tc = document.createElement('canvas'); tc.width = W; tc.height = H;
   tctx = tc.getContext('2d');
@@ -301,6 +352,20 @@ function solid(x, y) { x = Math.floor(x); y = Math.floor(y); if (x < 0 || x >= W
 const CIRC = []; for (let i = 0; i < 12; i++) CIRC.push([Math.cos(i * Math.PI / 6) * CR, Math.sin(i * Math.PI / 6) * CR]);
 function hitCirc(x, y) { if (solid(x, y)) return true; for (const [a, b] of CIRC) if (solid(x + a, y + b)) return true; return false; }
 function grounded(c) { return hitCirc(c.x, c.y + 1.5); }
+function surfacesAt(x) {
+  x = Math.floor(x); const out = [];
+  if (x < 0 || x >= W) return out;
+  for (let y = 30; y < WATER - 40; y++) {
+    if (!mask[y * W + x] || mask[(y - 1) * W + x]) continue;
+    let ok = true; for (let k = 2; k < 28; k++) if (mask[(y - k) * W + x]) { ok = false; break; }
+    if (ok) out.push(y);
+  }
+  return out;
+}
+function randomSurface(rnd, tries) {
+  for (let i = 0; i < (tries || 60); i++) { const x = 70 + rnd() * (W - 140), sf = surfacesAt(x); if (sf.length) return [x, sf[Math.floor(rnd() * sf.length)]]; }
+  return null;
+}
 function findSurface(x) { x = Math.floor(x); for (let y = 0; y < H; y++) if (mask[y * W + x]) return y; return -1; }
 
 /* ================= État réseau / jeu ================= */
@@ -341,15 +406,17 @@ function hostStartGame() {
   let id = 0;
   for (let k = 0; k < settings.per; k++) for (let t = 0; t < teams.length; t++) {
     let x, y, tries = 0;
-    do { x = 70 + r() * (W - 140); y = findSurface(x); tries++; }
-    while (tries < 300 && (y < 0 || y > WATER - 50 || usedX.some(u => Math.abs(u - x) < 45)));
-    usedX.push(x);
+    do { const sp = randomSurface(r, 10); if (sp) { x = sp[0]; y = sp[1]; } else { x = 70 + r() * (W - 140); y = findSurface(x); } tries++; }
+    while (tries < 300 && (y < 0 || y > WATER - 50 || usedX.some(u => Math.abs(u[0] - x) < 40 && Math.abs(u[1] - y) < 60)));
+    usedX.push([x, y]);
     const c = { id, team: t, kind: (t + k) % 4, name: settings.per > 1 ? teams[t].name + ' ' + (k + 1) : teams[t].name, x, y: y - CR - 2, vx: 0, vy: 0, hp: 100, dead: false, drowned: false, face: x < W / 2 ? 1 : -1, aim: -0.5, air: true, dmgTaken: 0 };
     for (let i = 0; i < 40 && hitCirc(c.x, c.y); i++) c.y -= 1;
     cr.push(c); id++;
   }
   initGame(teams, cr);
   G.spec = spec;
+  G.tt = Math.floor(Math.random() * teams.length) - 1;  // le premier à jouer est tiré au sort
+  G.ann.push(['🗺️ ' + (MAP_NAMES[spec.style] || 'Carte surprise'), '#ffc93c']);
   broadcast(startMsg());
 }
 
@@ -662,7 +729,7 @@ function fart(c) {
 function teleport(c) {
   G.fxe.push(['tele', Math.round(c.x), Math.round(c.y)]);
   for (let i = 0; i < 80; i++) {
-    const x = 80 + Math.random() * (W - 160), y = findSurface(x);
+    const sp = randomSurface(Math.random, 5); if (!sp) continue; const x = sp[0], y = sp[1];
     if (y < 40 || y > WATER - 50) continue;
     if (G.cr.some(o => !o.dead && o !== c && Math.hypot(o.x - x, o.y - y) < 40)) continue;
     c.x = x; c.y = y - CR - 2;
@@ -1264,7 +1331,7 @@ function applyDomLayout() {
   // droite : FEU en haut, SAUT juste en dessous, visée à côté
   const fx = x0 + cw - m - F;
   placeBtn('bFire', fx, b + J + gap, F);
-  placeBtn('bJump', fx + F / 2 - J / 2, b, J);
+  placeBtn('bJump', fx + F - J * 1.1, b, J * 1.1, J);
   placeBtn('bD', fx - gap - A, b + 4 * k, A);
   placeBtn('bU', fx - gap - A, b + 4 * k + A + gap, A);
   // centre
